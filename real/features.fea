@@ -1,0 +1,103 @@
+# FizzBuzz, computed by the font.
+#
+# Divisibility by 5: the last digit is 0 or 5.
+# Divisibility by 3: the digit sum mod 3 is 0 -- computable left to right
+# with a three-state machine. GSUB chained contextual substitution can run
+# that state machine, because the backtrack context matches glyphs that
+# have ALREADY been substituted: each digit is rewritten to a variant
+# carrying the running sum mod 3, keyed on the previous digit's variant.
+#
+# Three lookups run in sequence over the whole text:
+#   STATE     digit -> digit.sK  (running digit-sum = K mod 3, incl. this digit)
+#   CLASSIFY  last digit of a number -> Fizz/Buzz/FizzBuzz word glyph
+#   BLANK     remaining digits of a converted number -> zero-width blank
+
+@digits    = [zero    one    two    three    four    five    six    seven    eight    nine];
+@digits_s0 = [zero.s0 one.s0 two.s0 three.s0 four.s0 five.s0 six.s0 seven.s0 eight.s0 nine.s0];
+@digits_s1 = [zero.s1 one.s1 two.s1 three.s1 four.s1 five.s1 six.s1 seven.s1 eight.s1 nine.s1];
+@digits_s2 = [zero.s2 one.s2 two.s2 three.s2 four.s2 five.s2 six.s2 seven.s2 eight.s2 nine.s2];
+
+# digits grouped by their value mod 3
+@d0 = [zero three six nine];
+@d1 = [one four seven];
+@d2 = [two five eight];
+
+@s0 = @digits_s0;
+@s1 = @digits_s1;
+@s2 = @digits_s2;
+@st = [@s0 @s1 @s2];
+
+@word = [Fizz.word Buzz.word FizzBuzz.word];
+
+lookup TO_S0 { sub @digits by @digits_s0; } TO_S0;
+lookup TO_S1 { sub @digits by @digits_s1; } TO_S1;
+lookup TO_S2 { sub @digits by @digits_s2; } TO_S2;
+
+# last digit is 0 or 5 AND digit sum = 0 mod 3  =>  divisible by 15
+@fb_last = [zero.s0 five.s0];
+lookup TO_FB {
+  sub zero.s0 by FizzBuzz.word;
+  sub five.s0 by FizzBuzz.word;
+} TO_FB;
+
+# digit sum = 0 mod 3, last digit not 0 or 5  =>  divisible by 3 only
+@fizz_last = [one.s0 two.s0 three.s0 four.s0 six.s0 seven.s0 eight.s0 nine.s0];
+lookup TO_FIZZ { sub @fizz_last by Fizz.word; } TO_FIZZ;
+
+# last digit 0 or 5, digit sum not 0 mod 3  =>  divisible by 5 only
+@buzz_last = [zero.s1 zero.s2 five.s1 five.s2];
+lookup TO_BUZZ { sub @buzz_last by Buzz.word; } TO_BUZZ;
+
+lookup TO_BLANK { sub @st by blank; } TO_BLANK;
+
+# The state machine. Rules are tried top to bottom at each position; the
+# nine transition rules see the previous digit's already-substituted state
+# in the backtrack, and the three fallback rules catch the first digit of
+# a number (nothing state-like before it).
+lookup STATE {
+  sub @s0 @d0' lookup TO_S0;
+  sub @s0 @d1' lookup TO_S1;
+  sub @s0 @d2' lookup TO_S2;
+  sub @s1 @d0' lookup TO_S1;
+  sub @s1 @d1' lookup TO_S2;
+  sub @s1 @d2' lookup TO_S0;
+  sub @s2 @d0' lookup TO_S2;
+  sub @s2 @d1' lookup TO_S0;
+  sub @s2 @d2' lookup TO_S1;
+  sub @d0' lookup TO_S0;
+  sub @d1' lookup TO_S1;
+  sub @d2' lookup TO_S2;
+} STATE;
+
+# A state digit NOT followed by another state digit is the last digit of
+# its number; its state glyph alone decides the verdict. Numbers divisible
+# by neither 3 nor 5 match no rule and stay as (identical-looking) digits.
+lookup CLASSIFY {
+  ignore sub @st' @st;
+  sub @fb_last'   lookup TO_FB;
+  sub @fizz_last' lookup TO_FIZZ;
+  sub @buzz_last' lookup TO_BUZZ;
+} CLASSIFY;
+
+# Erase the leftover digits of any number that became a word. OpenType
+# contexts are fixed-length, so one rule per distance to the word glyph:
+# this handles numbers up to 12 digits.
+lookup BLANK {
+  sub @st' lookup TO_BLANK @word;
+  sub @st' lookup TO_BLANK @st @word;
+  sub @st' lookup TO_BLANK @st @st @word;
+  sub @st' lookup TO_BLANK @st @st @st @word;
+  sub @st' lookup TO_BLANK @st @st @st @st @word;
+  sub @st' lookup TO_BLANK @st @st @st @st @st @word;
+  sub @st' lookup TO_BLANK @st @st @st @st @st @st @word;
+  sub @st' lookup TO_BLANK @st @st @st @st @st @st @st @word;
+  sub @st' lookup TO_BLANK @st @st @st @st @st @st @st @st @word;
+  sub @st' lookup TO_BLANK @st @st @st @st @st @st @st @st @st @word;
+  sub @st' lookup TO_BLANK @st @st @st @st @st @st @st @st @st @st @word;
+} BLANK;
+
+feature calt {
+  lookup STATE;
+  lookup CLASSIFY;
+  lookup BLANK;
+} calt;

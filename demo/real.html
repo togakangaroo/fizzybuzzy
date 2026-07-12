@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FizzBuzz as a Font — the real thing</title>
+<style>
+  @font-face {
+    font-family: "FizzBuzz";
+    src: url("../dist/FizzBuzz.woff2") format("woff2"),
+         url("../dist/FizzBuzz.ttf");
+  }
+  :root { color-scheme: light dark; }
+  body {
+    font-family: system-ui, sans-serif;
+    max-width: 60rem;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+  h1 { margin-bottom: 0.25rem; }
+  .subtitle { opacity: 0.7; margin-top: 0; }
+  .editor {
+    border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+    border-radius: 8px;
+    padding: 1rem;
+    min-height: 14rem;
+    font-size: 2rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    font-family: "FizzBuzz";
+  }
+  body.raw .editor { font-feature-settings: "calt" 0; }
+  .controls { margin: 1rem 0 1.5rem; display: flex; gap: 1.5rem; align-items: center; }
+  button { font-size: 1rem; padding: 0.35rem 0.9rem; }
+  label { user-select: none; }
+</style>
+</head>
+<body>
+  <h1>FizzBuzz as a Font — the real thing</h1>
+  <p class="subtitle">
+    A mod-3 state machine running in the font's GSUB tables during text
+    layout. Works for any number up to 12 digits — try 999999999990.
+  </p>
+
+  <div class="controls">
+    <label>
+      <input type="checkbox" id="toggle">
+      Disable the font's logic (<code>calt</code> off) — show what's really there
+    </label>
+    <button id="count">Count to 100</button>
+    <a href="cheat.html">&larr; the cheat</a>
+  </div>
+
+  <div class="editor" contenteditable="true" spellcheck="false"></div>
+
+  <p>It's live text — type your own numbers above.</p>
+
+<script>
+  const editor = document.querySelector(".editor");
+  editor.textContent = Array.from({length: 20}, (_, i) => i + 1).join(" ");
+
+  document.getElementById("toggle").addEventListener("change", e =>
+    document.body.classList.toggle("raw", e.target.checked));
+
+  let timer = null;
+  document.getElementById("count").addEventListener("click", () => {
+    clearInterval(timer);
+    let n = 0;
+    editor.textContent = "";
+    timer = setInterval(() => {
+      n += 1;
+      if (n > 100) { clearInterval(timer); return; }
+      editor.textContent += (n > 1 ? " " : "") + n;
+    }, 80);
+  });
+</script>
+</body>
+</html>
