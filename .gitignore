@@ -1,3 +1,13 @@
+# build artifacts (fonts are rebuilt with uv run {cheat,real}/build.py)
 dist/
+
+# python
 __pycache__/
 .pytest_cache/
+.venv/
+
+# browser-verification droppings
+.playwright-mcp/
+
+# os / editors
+.DS_Store

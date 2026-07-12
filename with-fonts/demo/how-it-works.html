@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>How the FizzBuzz font computes</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --s0: #2e7d32; --s1: #1565c0; --s2: #c62828;
+    --word: #7b1fa2; --hl: #f9a825;
+    --border: color-mix(in srgb, currentColor 25%, transparent);
+    --dim: color-mix(in srgb, currentColor 55%, transparent);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --s0: #81c784; --s1: #64b5f6; --s2: #e57373; --word: #ce93d8; }
+  }
+  body {
+    font-family: system-ui, sans-serif;
+    max-width: 68rem;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+  h1 { margin-bottom: 0.25rem; }
+  .subtitle { opacity: 0.7; margin-top: 0; }
+  .controls, .input-row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin: 1rem 0; }
+  input[type="text"] {
+    font-size: 1.3rem; padding: 0.3rem 0.6rem; width: 14rem;
+    border: 1px solid var(--border); border-radius: 6px; background: transparent; color: inherit;
+  }
+  button { font-size: 1rem; padding: 0.35rem 0.9rem; }
+
+  .passes { display: flex; gap: 0.5rem; margin: 1rem 0 0.5rem; }
+  .pass-chip {
+    padding: 0.25rem 0.8rem; border-radius: 999px; border: 1px solid var(--border);
+    opacity: 0.45; font-weight: 600;
+  }
+  .pass-chip.active { opacity: 1; border-color: currentColor; }
+  .pass-chip.done { opacity: 0.8; }
+  .pass-chip.done::after { content: " ✓"; }
+
+  .buffer {
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-end;
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 1.2rem 1rem; min-height: 7rem; margin: 0.5rem 0 1rem;
+  }
+  .tile {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 0.4rem 0.55rem; border-radius: 8px;
+    border: 2px solid var(--border);
+    transition: all 0.15s ease;
+    min-width: 2.6rem;
+  }
+  .tile .g { font-size: 2rem; line-height: 1.1; font-weight: 600; }
+  .tile .n { font-size: 0.7rem; font-family: ui-monospace, monospace; opacity: 0.75; white-space: nowrap; }
+  .tile.s0 { border-color: var(--s0); } .tile.s0 .n { color: var(--s0); opacity: 1; }
+  .tile.s1 { border-color: var(--s1); } .tile.s1 .n { color: var(--s1); opacity: 1; }
+  .tile.s2 { border-color: var(--s2); } .tile.s2 .n { color: var(--s2); opacity: 1; }
+  .tile.word { border-color: var(--word); } .tile.word .g, .tile.word .n { color: var(--word); }
+  .tile.blankg { opacity: 0.35; border-style: dashed; }
+  .tile.current { outline: 3px solid var(--hl); outline-offset: 2px; }
+  .tile.backtrack { background: color-mix(in srgb, var(--hl) 22%, transparent); }
+  .tile.lookahead { background: color-mix(in srgb, var(--s1) 15%, transparent); }
+
+  .explain {
+    display: grid; grid-template-columns: 1fr 15rem; gap: 1.5rem; align-items: start;
+  }
+  @media (max-width: 52rem) { .explain { grid-template-columns: 1fr; } }
+  .rulebox {
+    border: 1px solid var(--border); border-radius: 10px; padding: 1rem; min-height: 8.5rem;
+  }
+  .rulebox code {
+    display: block; font-size: 1.05rem; margin: 0.5rem 0; padding: 0.5rem 0.7rem;
+    background: color-mix(in srgb, currentColor 7%, transparent); border-radius: 6px;
+    font-family: ui-monospace, monospace; white-space: pre-wrap;
+  }
+  .rulebox .why { margin: 0.25rem 0 0; }
+  .legend { font-size: 0.85rem; display: flex; gap: 1.1rem; flex-wrap: wrap; margin: 0.25rem 0 0; opacity: 0.85; }
+  .legend .sw { display: inline-block; width: 0.8em; height: 0.8em; border-radius: 3px; margin-right: 0.3em; vertical-align: -0.05em; }
+  .dfa svg { width: 100%; height: auto; }
+  .dfa text { fill: currentColor; font-family: ui-monospace, monospace; }
+  .dfa .node { fill: none; stroke: var(--dim); stroke-width: 2.5; }
+  .dfa .node.on0 { stroke: var(--s0); fill: color-mix(in srgb, var(--s0) 18%, transparent); }
+  .dfa .node.on1 { stroke: var(--s1); fill: color-mix(in srgb, var(--s1) 18%, transparent); }
+  .dfa .node.on2 { stroke: var(--s2); fill: color-mix(in srgb, var(--s2) 18%, transparent); }
+  .dfa .edge { stroke: var(--dim); fill: none; stroke-width: 1.5; marker-end: url(#arr); }
+  .dfa .edge.hot { stroke: var(--hl); stroke-width: 3; }
+  .dfa .elabel { font-size: 11px; opacity: 0.8; }
+  .dfa figcaption { font-size: 0.85rem; opacity: 0.75; text-align: center; margin-top: 0.25rem; }
+  nav { margin-top: 2rem; display: flex; gap: 1.5rem; }
+</style>
+</head>
+<body>
+  <h1>How the FizzBuzz font computes</h1>
+  <p class="subtitle">
+    Three GSUB lookups run in order over the glyph buffer. The trick making it a
+    state machine: within a lookup, the <em>backtrack</em> context matches glyphs
+    that have <strong>already been substituted</strong> — so state written at one
+    position is readable at the next.
+  </p>
+
+  <div class="input-row">
+    <label for="num">Text to shape:</label>
+    <input type="text" id="num" value="315">
+    <button id="load">Load</button>
+  </div>
+
+  <div class="passes">
+    <span class="pass-chip" data-pass="STATE">1 STATE</span>
+    <span class="pass-chip" data-pass="CLASSIFY">2 CLASSIFY</span>
+    <span class="pass-chip" data-pass="BLANK">3 BLANK</span>
+  </div>
+
+  <div class="buffer" id="buffer"></div>
+  <p class="legend">
+    <span><span class="sw" style="background:var(--s0)"></span>digit sum ≡ 0 (mod 3)</span>
+    <span><span class="sw" style="background:var(--s1)"></span>≡ 1</span>
+    <span><span class="sw" style="background:var(--s2)"></span>≡ 2</span>
+    <span><span class="sw" style="background:var(--word)"></span>word glyph</span>
+    <span><span class="sw" style="background:var(--hl)"></span>backtrack (already substituted!)</span>
+  </p>
+
+  <div class="controls">
+    <button id="reset">⏮ Reset</button>
+    <button id="step">Step ⏭</button>
+    <button id="play">▶ Play</button>
+    <span id="counter" style="opacity:0.7"></span>
+  </div>
+
+  <div class="explain">
+    <div class="rulebox" id="rulebox"></div>
+    <figure class="dfa" id="dfa">
+      <svg viewBox="0 0 240 220">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/>
+          </marker>
+        </defs>
+        <!-- nodes: s0 top, s1 bottom-left, s2 bottom-right -->
+        <circle class="node" id="n0" cx="120" cy="45"  r="26"/>
+        <circle class="node" id="n1" cx="55"  cy="160" r="26"/>
+        <circle class="node" id="n2" cx="185" cy="160" r="26"/>
+        <text x="120" y="50"  text-anchor="middle" font-size="15">s0</text>
+        <text x="55"  y="165" text-anchor="middle" font-size="15">s1</text>
+        <text x="185" y="165" text-anchor="middle" font-size="15">s2</text>
+        <!-- self loops (+0 digits: 0 3 6 9) -->
+        <path class="edge" id="e00" d="M104,23 A16,16 0 1,1 136,23"/>
+        <path class="edge" id="e11" d="M30,175 A16,16 0 1,0 38,142"/>
+        <path class="edge" id="e22" d="M202,142 A16,16 0 1,0 210,175"/>
+        <!-- +1 digits (1 4 7): s0->s1->s2->s0 -->
+        <path class="edge" id="e01" d="M97,60 Q60,90 52,133"/>
+        <path class="edge" id="e12" d="M82,167 Q120,180 158,167"/>
+        <path class="edge" id="e20" d="M188,133 Q180,90 143,60"/>
+        <!-- +2 digits (2 5 8): s0->s2->s1->s0 -->
+        <path class="edge" id="e02" d="M143,57 Q185,85 190,133"/>
+        <path class="edge" id="e21" d="M158,155 Q120,140 82,155"/>
+        <path class="edge" id="e10" d="M50,133 Q55,85 98,57"/>
+        <text class="elabel" x="120" y="10"  text-anchor="middle">+0</text>
+        <text class="elabel" x="8"   y="150">+0</text>
+        <text class="elabel" x="215" y="150">+0</text>
+        <text class="elabel" x="60"  y="100">+1</text>
+        <text class="elabel" x="120" y="192" text-anchor="middle">+1</text>
+        <text class="elabel" x="172" y="100">+1</text>
+        <text class="elabel" x="182" y="80">+2</text>
+        <text class="elabel" x="120" y="136" text-anchor="middle">+2</text>
+        <text class="elabel" x="47"  y="80">+2</text>
+      </svg>
+      <figcaption>running digit-sum mod 3; edges labeled by digit mod 3</figcaption>
+    </figure>
+  </div>
+
+  <nav>
+    <a href="cheat.html">&larr; the cheat</a>
+    <a href="real.html">the real font &rarr;</a>
+  </nav>
+
+<script>
+  const DIGIT_NAMES = ["zero","one","two","three","four","five","six","seven","eight","nine"];
+
+  const isDigitGlyph = g => DIGIT_NAMES.includes(g.split(".")[0]) && (g.includes(".s") || DIGIT_NAMES.includes(g));
+  const stateOf = g => { const m = g.match(/\.s([012])$/); return m ? +m[1] : null; };
+  const isStateGlyph = g => stateOf(g) !== null;
+
+  function glyphName(ch) {
+    if (ch >= "0" && ch <= "9") return DIGIT_NAMES[+ch];
+    if (ch === " ") return "space";
+    return ch;
+  }
+  const snap = buf => buf.map(t => ({...t}));
+
+  // Simulate the three lookups from real/features.fea, recording every step.
+  function simulate(text) {
+    const buf = [...text].map(ch => ({ch, glyph: glyphName(ch)}));
+    const steps = [{
+      pass: null, buffer: snap(buf), pos: null,
+      rule: null,
+      title: "Input",
+      why: `The renderer maps each character to a glyph. GSUB never sees "${text}" — only this glyph sequence. Press Step.`,
+    }];
+
+    // --- pass 1: STATE
+    for (let i = 0; i < buf.length; i++) {
+      const g = buf[i];
+      if (!DIGIT_NAMES.includes(g.glyph)) continue;
+      const d = DIGIT_NAMES.indexOf(g.glyph);
+      const dm = d % 3;
+      const prev = i > 0 ? stateOf(buf[i - 1].glyph) : null;
+      const k = prev === null ? dm : (prev + dm) % 3;
+      g.glyph = `${DIGIT_NAMES[d]}.s${k}`;
+      steps.push({
+        pass: "STATE", buffer: snap(buf), pos: i,
+        backtrack: prev === null ? null : i - 1,
+        edge: prev === null ? null : `e${prev}${k}`, node: k,
+        rule: prev === null
+          ? `sub @d${dm}' lookup TO_S${k};`
+          : `sub @s${prev} @d${dm}' lookup TO_S${k};`,
+        title: prev === null ? "Start a number" : "State transition",
+        why: prev === null
+          ? `No state glyph before "${g.ch}" — this digit starts a number. ${g.ch} mod 3 = ${dm}, so it becomes ${g.glyph}.`
+          : `The backtrack sees the previous glyph is already a .s${prev} — the running sum so far. (${prev} + ${g.ch}) mod 3 = ${k}, so "${g.ch}" becomes ${g.glyph}.`,
+      });
+    }
+
+    // --- pass 2: CLASSIFY
+    for (let i = 0; i < buf.length; i++) {
+      const g = buf[i];
+      const k = stateOf(g.glyph);
+      if (k === null) continue;
+      const nextIsState = i + 1 < buf.length && isStateGlyph(buf[i + 1].glyph);
+      if (nextIsState) {
+        steps.push({
+          pass: "CLASSIFY", buffer: snap(buf), pos: i, lookahead: i + 1,
+          rule: "ignore sub @st' @st;",
+          title: "Not the last digit",
+          why: "Another state digit follows, so this isn't the end of the number. The ignore rule matches first and nothing happens.",
+        });
+        continue;
+      }
+      const base = g.glyph.split(".")[0];
+      const endsIn05 = base === "zero" || base === "five";
+      let rule = null, word = null, title, why;
+      if (k === 0 && endsIn05) {
+        word = "FizzBuzz.word"; rule = "sub @fb_last' lookup TO_FB;";
+        title = "Divisible by 15!";
+        why = `Last digit: digit sum ≡ 0 (mod 3) AND the digit is ${g.ch} — divisible by both 3 and 5.`;
+      } else if (k === 0) {
+        word = "Fizz.word"; rule = "sub @fizz_last' lookup TO_FIZZ;";
+        title = "Divisible by 3";
+        why = "Last digit carries state s0: the whole number's digit sum ≡ 0 (mod 3).";
+      } else if (endsIn05) {
+        word = "Buzz.word"; rule = "sub @buzz_last' lookup TO_BUZZ;";
+        title = "Divisible by 5";
+        why = `The number ends in ${g.ch}, but digit sum ≡ ${k} (mod 3) — 5 only.`;
+      } else {
+        title = "Divisible by neither";
+        why = `Last digit is ${g.glyph}: sum ≡ ${k} (mod 3) and it doesn't end in 0 or 5. No rule matches — the number keeps its digits (the .sK variants look identical).`;
+      }
+      if (word) g.glyph = word;
+      steps.push({
+        pass: "CLASSIFY", buffer: snap(buf), pos: i, rule, title, why,
+      });
+    }
+
+    // --- pass 3: BLANK
+    for (let i = 0; i < buf.length; i++) {
+      const g = buf[i];
+      if (!isStateGlyph(g.glyph)) continue;
+      let j = i + 1, dist = 0;
+      while (j < buf.length && isStateGlyph(buf[j].glyph)) { j++; dist++; }
+      if (j < buf.length && buf[j].glyph.endsWith(".word")) {
+        const ctx = Array(dist).fill("@st").join(" ");
+        g.glyph = "blank";
+        steps.push({
+          pass: "BLANK", buffer: snap(buf), pos: i, lookahead: j,
+          rule: `sub @st' lookup TO_BLANK ${ctx ? ctx + " " : ""}@word;`,
+          title: "Erase a leftover digit",
+          why: `A word glyph sits ${dist} state-digit${dist === 1 ? "" : "s"} to the right — this digit belonged to a converted number. It becomes the zero-width blank.`,
+        });
+      }
+    }
+
+    steps.push({
+      pass: "DONE", buffer: snap(buf), pos: null, rule: null,
+      title: "Layout complete",
+      why: "This is the glyph sequence the renderer draws. The font computed FizzBuzz; no code ran anywhere else.",
+    });
+    return steps;
+  }
+
+  // ---------------------------------------------------------------- UI
+  const bufferEl = document.getElementById("buffer");
+  const ruleboxEl = document.getElementById("rulebox");
+  const counterEl = document.getElementById("counter");
+  let steps = [], cursor = 0, timer = null;
+
+  function display(t) {
+    if (t.glyph === "blank") return "∅";
+    if (t.glyph.endsWith(".word")) return t.glyph.replace(".word", "");
+    if (t.glyph === "space") return "␣";
+    return t.ch;
+  }
+
+  function render() {
+    const step = steps[cursor];
+    bufferEl.innerHTML = "";
+    step.buffer.forEach((t, i) => {
+      const tile = document.createElement("div");
+      tile.className = "tile";
+      const k = stateOf(t.glyph);
+      if (k !== null) tile.classList.add(`s${k}`);
+      if (t.glyph.endsWith(".word")) tile.classList.add("word");
+      if (t.glyph === "blank") tile.classList.add("blankg");
+      if (i === step.pos) tile.classList.add("current");
+      if (i === step.backtrack) tile.classList.add("backtrack");
+      if (i === step.lookahead) tile.classList.add("lookahead");
+      tile.innerHTML = `<span class="g">${display(t)}</span><span class="n">${t.glyph}</span>`;
+      bufferEl.appendChild(tile);
+    });
+
+    const passes = ["STATE", "CLASSIFY", "BLANK"];
+    const passIdx = passes.indexOf(step.pass);
+    document.querySelectorAll(".pass-chip").forEach((chip, i) => {
+      chip.classList.toggle("active", i === passIdx);
+      chip.classList.toggle("done", step.pass === "DONE" || (passIdx >= 0 && i < passIdx));
+    });
+
+    ruleboxEl.innerHTML = `<strong>${step.title}</strong>` +
+      (step.rule ? `<code>${step.rule}</code>` : "") +
+      `<p class="why">${step.why}</p>`;
+    counterEl.textContent = `step ${cursor} / ${steps.length - 1}`;
+
+    document.querySelectorAll(".dfa .node").forEach(n => n.className.baseVal = "node");
+    document.querySelectorAll(".dfa .edge").forEach(e => e.classList.remove("hot"));
+    if (step.pass === "STATE") {
+      document.getElementById(`n${step.node}`).classList.add(`on${step.node}`);
+      if (step.edge) document.getElementById(step.edge)?.classList.add("hot");
+    }
+  }
+
+  function stop() { clearInterval(timer); timer = null; document.getElementById("play").textContent = "▶ Play"; }
+  function load() {
+    stop();
+    steps = simulate(document.getElementById("num").value || "315");
+    cursor = 0;
+    render();
+  }
+
+  document.getElementById("load").addEventListener("click", load);
+  document.getElementById("num").addEventListener("keydown", e => { if (e.key === "Enter") load(); });
+  document.getElementById("reset").addEventListener("click", () => { stop(); cursor = 0; render(); });
+  document.getElementById("step").addEventListener("click", () => {
+    if (cursor < steps.length - 1) { cursor++; render(); }
+  });
+  document.getElementById("play").addEventListener("click", () => {
+    if (timer) { stop(); return; }
+    document.getElementById("play").textContent = "⏸ Pause";
+    timer = setInterval(() => {
+      if (cursor < steps.length - 1) { cursor++; render(); } else stop();
+    }, 1100);
+  });
+
+  load();
+</script>
+</body>
+</html>

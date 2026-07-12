@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>FizzBuzz as a Font — the cheat</title>
+<title>FizzBuzz as a Font — the real thing</title>
 <style>
   @font-face {
-    font-family: "FizzBuzz Cheat";
-    src: url("../dist/FizzBuzzCheat.woff2") format("woff2"),
-         url("../dist/FizzBuzzCheat.ttf");
+    font-family: "FizzBuzz";
+    src: url("../dist/FizzBuzz.woff2") format("woff2"),
+         url("../dist/FizzBuzz.ttf");
   }
   :root { color-scheme: light dark; }
   body {
@@ -26,7 +26,7 @@
     font-size: 2rem;
     line-height: 1.6;
     white-space: pre-wrap;
-    font-family: "FizzBuzz Cheat";
+    font-family: "FizzBuzz";
   }
   body.raw .editor { font-feature-settings: "calt" 0; }
   .controls { margin: 1rem 0 1.5rem; display: flex; gap: 1.5rem; align-items: center; }
@@ -35,10 +35,10 @@
 </style>
 </head>
 <body>
-  <h1>FizzBuzz as a Font — the cheat</h1>
+  <h1>FizzBuzz as a Font — the real thing</h1>
   <p class="subtitle">
-    47 hardcoded ligatures, one per qualifying number from 1 to 100.
-    No computation at all — and past 100 it just gives up. Try typing 105.
+    A mod-3 state machine running in the font's GSUB tables during text
+    layout. Works for any number up to 12 digits — try 999999999990.
   </p>
 
   <div class="controls">
@@ -47,7 +47,8 @@
       Disable the font's logic (<code>calt</code> off) — show what's really there
     </label>
     <button id="count">Count to 100</button>
-    <a href="real.html">the real thing &rarr;</a>
+    <a href="cheat.html">&larr; the cheat</a>
+    <a href="how-it-works.html">how does it work? &rarr;</a>
   </div>
 
   <div class="editor" contenteditable="true" spellcheck="false"></div>
