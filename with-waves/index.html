@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FizzBuzz with Sine Waves</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --fizz: light-dark(#1a6fd4, #5ba3f5);
+    --buzz: light-dark(#d4661a, #f5a35b);
+  }
+  body {
+    font-family: system-ui, sans-serif;
+    max-width: 60rem;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+  h1 { margin-bottom: 0.25rem; }
+  .subtitle { opacity: 0.7; margin-top: 0; }
+  .controls { margin: 1rem 0; display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; }
+  button, select { font-size: 1rem; padding: 0.35rem 0.9rem; }
+  .legend { display: flex; gap: 1.5rem; font-size: 0.95rem; }
+  .legend .fizz { color: var(--fizz); }
+  .legend .buzz { color: var(--buzz); }
+  canvas {
+    width: 100%;
+    height: 300px;
+    display: block;
+    border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+    border-radius: 8px;
+  }
+  .table-wrap {
+    max-height: 18rem;
+    overflow-y: auto;
+    margin-top: 1.5rem;
+    border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+    border-radius: 8px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 1.05rem; }
+  th, td { padding: 0.35rem 0.75rem; text-align: center; }
+  thead th {
+    position: sticky; top: 0;
+    background: Canvas;
+    border-bottom: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  }
+  th.fizz, td.fizz { color: var(--fizz); }
+  th.buzz, td.buzz { color: var(--buzz); }
+  td.result { font-weight: 600; }
+  td.result.fizz { color: var(--fizz); }
+  td.result.buzz { color: var(--buzz); }
+  td.result.fizzbuzz {
+    background: linear-gradient(90deg, var(--fizz), var(--buzz));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  tbody tr:last-child { background: color-mix(in srgb, currentColor 10%, transparent); }
+</style>
+</head>
+<body>
+  <h1>FizzBuzz with Sine Waves</h1>
+  <p class="subtitle">
+    sin(&pi;n/3) is zero exactly when n is a multiple of 3, and sin(&pi;n/5)
+    when n is a multiple of 5. (Not sin(2&pi;n/3) &mdash; a wave with period 3
+    also crosses zero at 1.5, 4.5, &hellip; between the ticks. Halving the
+    frequency leaves zeros <em>only</em> on the multiples.)
+    Fizz when the first wave crosses zero, Buzz when the second does,
+    FizzBuzz when both do.
+  </p>
+
+  <div class="controls">
+    <button id="play">Play</button>
+    <button id="reset">Reset</button>
+    <label>Speed
+      <select id="speed">
+        <option value="0.5">0.5&times;</option>
+        <option value="1" selected>1&times;</option>
+        <option value="2">2&times;</option>
+      </select>
+    </label>
+    <div class="legend">
+      <span class="fizz">&mdash; sin(&pi;x/3)</span>
+      <span class="buzz">&mdash; sin(&pi;x/5)</span>
+    </div>
+  </div>
+
+  <canvas id="plot"></canvas>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>n</th>
+          <th class="fizz">sin(&pi;n/3) = 0</th>
+          <th class="buzz">sin(&pi;n/5) = 0</th>
+          <th>result</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+<script>
+  const N = 30;                       // two full FizzBuzz cycles
+  const TICK_MS = 700;                // ms per integer tick at 1x
+  const EPS = 1e-9;
+
+  const fizzWave = x => Math.sin(Math.PI * x / 3);
+  const buzzWave = x => Math.sin(Math.PI * x / 5);
+  const isZero = v => Math.abs(v) < EPS;
+
+  const canvas = document.getElementById("plot");
+  const ctx = canvas.getContext("2d");
+  const rows = document.getElementById("rows");
+  const tableWrap = document.querySelector(".table-wrap");
+  const playBtn = document.getElementById("play");
+  const speedSel = document.getElementById("speed");
+
+  // canvas can't parse light-dark(); read the already-computed color
+  // from the legend elements instead
+  const css = cls => getComputedStyle(document.querySelector(`.legend .${cls}`)).color;
+
+  let playhead = 0;                   // current x position, 0..N
+  let lastTickEmitted = 0;
+  let playing = false;
+  let lastFrame = null;
+
+  function sizeCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return rect;
+  }
+
+  function draw() {
+    const rect = sizeCanvas();
+    const W = rect.width, H = rect.height;
+    const pad = { l: 20, r: 20, t: 16, b: 28 };
+    const plotW = W - pad.l - pad.r;
+    const midY = pad.t + (H - pad.t - pad.b) / 2;
+    const amp = (H - pad.t - pad.b) / 2 - 8;
+    const xOf = x => pad.l + (x / N) * plotW;
+    const yOf = v => midY - v * amp;
+
+    ctx.clearRect(0, 0, W, H);
+    const fg = getComputedStyle(canvas).color;
+
+    // gridlines + tick labels
+    ctx.font = "12px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    for (let n = 1; n <= N; n++) {
+      ctx.strokeStyle = fg;
+      ctx.globalAlpha = 0.12;
+      ctx.beginPath();
+      ctx.moveTo(xOf(n), pad.t);
+      ctx.lineTo(xOf(n), H - pad.b);
+      ctx.stroke();
+      ctx.globalAlpha = 0.6;
+      ctx.fillStyle = fg;
+      ctx.fillText(n, xOf(n), H - pad.b + 16);
+    }
+    ctx.globalAlpha = 1;
+
+    // x axis (y = 0)
+    ctx.strokeStyle = fg;
+    ctx.globalAlpha = 0.4;
+    ctx.beginPath();
+    ctx.moveTo(pad.l, midY);
+    ctx.lineTo(W - pad.r, midY);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // curves up to the playhead
+    const waves = [
+      { f: fizzWave, color: css("fizz") },
+      { f: buzzWave, color: css("buzz") },
+    ];
+    for (const { f, color } of waves) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const steps = Math.max(2, Math.ceil(playhead * 20));
+      for (let i = 0; i <= steps; i++) {
+        const x = (playhead * i) / steps;
+        const px = xOf(x), py = yOf(f(x));
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    }
+
+    if (playhead > 0) {
+      // playhead line
+      ctx.strokeStyle = fg;
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(xOf(playhead), pad.t);
+      ctx.lineTo(xOf(playhead), H - pad.b);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      // current-value dots
+      for (const { f, color } of waves) {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(xOf(playhead), yOf(f(playhead)), 4, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+
+      // pulse at a fresh zero crossing
+      const nearTick = Math.round(playhead);
+      const dist = Math.abs(playhead - nearTick);
+      if (nearTick >= 1 && dist < 0.4) {
+        const pulse = 6 + 10 * (1 - dist / 0.4);
+        for (const { f, color } of waves) {
+          if (!isZero(f(nearTick))) continue;
+          ctx.strokeStyle = color;
+          ctx.globalAlpha = 1 - dist / 0.4;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(xOf(nearTick), midY, pulse, 0, 2 * Math.PI);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+  }
+
+  function emitRow(n) {
+    const fz = isZero(fizzWave(n));
+    const bz = isZero(buzzWave(n));
+    const tr = document.createElement("tr");
+    const result = fz && bz ? "FizzBuzz" : fz ? "Fizz" : bz ? "Buzz" : String(n);
+    const cls = fz && bz ? "fizzbuzz" : fz ? "fizz" : bz ? "buzz" : "";
+    tr.innerHTML =
+      `<td>${n}</td>` +
+      `<td class="fizz">${fz ? "✓" : "–"}</td>` +
+      `<td class="buzz">${bz ? "✓" : "–"}</td>` +
+      `<td class="result ${cls}">${result}</td>`;
+    rows.appendChild(tr);
+    tableWrap.scrollTop = tableWrap.scrollHeight;
+  }
+
+  function frame(ts) {
+    if (!playing) return;
+    if (lastFrame !== null) {
+      const speed = parseFloat(speedSel.value);
+      playhead = Math.min(N, playhead + ((ts - lastFrame) / TICK_MS) * speed);
+    }
+    lastFrame = ts;
+    while (lastTickEmitted < Math.floor(playhead)) emitRow(++lastTickEmitted);
+    draw();
+    if (playhead >= N) {
+      playing = false;
+      playBtn.textContent = "Play";
+      return;
+    }
+    requestAnimationFrame(frame);
+  }
+
+  playBtn.addEventListener("click", () => {
+    if (playing) {
+      playing = false;
+      playBtn.textContent = "Play";
+      return;
+    }
+    if (playhead >= N) reset();
+    playing = true;
+    lastFrame = null;
+    playBtn.textContent = "Pause";
+    requestAnimationFrame(frame);
+  });
+
+  function reset() {
+    playing = false;
+    playhead = 0;
+    lastTickEmitted = 0;
+    rows.innerHTML = "";
+    playBtn.textContent = "Play";
+    draw();
+  }
+  document.getElementById("reset").addEventListener("click", reset);
+
+  window.addEventListener("resize", draw);
+  draw();
+</script>
+</body>
+</html>
