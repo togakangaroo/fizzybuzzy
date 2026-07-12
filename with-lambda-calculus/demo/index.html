@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FizzBuzz with Nothing — lambda calculus</title>
+<style>
+  :root {
+    --bg: #1a1b26; --panel: #24283b; --ink: #c0caf5; --dim: #565f89;
+    --accent: #7aa2f7; --fizz: #9ece6a; --buzz: #f7768e; --both: #e0af68;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem; background: var(--bg); color: var(--ink);
+    font: 16px/1.6 -apple-system, "Segoe UI", sans-serif;
+    max-width: 60rem; margin-inline: auto;
+  }
+  h1 { font-size: 1.6rem; }
+  h1 span { color: var(--dim); font-weight: normal; }
+  a { color: var(--accent); }
+  code, pre, .output { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .panel {
+    background: var(--panel); border-radius: 10px; padding: 1rem 1.25rem;
+    margin: 1.25rem 0;
+  }
+  .output {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+    gap: .25rem .75rem; font-size: .9rem;
+  }
+  .output .fizz { color: var(--fizz); }
+  .output .buzz { color: var(--buzz); }
+  .output .fizzbuzz { color: var(--both); font-weight: bold; }
+  .output .n { color: var(--dim); }
+  pre {
+    white-space: pre-wrap; word-break: break-all; font-size: .72rem;
+    line-height: 1.45; max-height: 24rem; overflow-y: auto; margin: 0;
+    color: var(--fizz);
+  }
+  button {
+    background: var(--accent); color: var(--bg); border: 0; border-radius: 6px;
+    padding: .5rem 1rem; font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button:hover { filter: brightness(1.1); }
+  .stats { color: var(--dim); font-size: .85rem; }
+  table { border-collapse: collapse; font-size: .9rem; }
+  td { padding: .15rem .9rem .15rem 0; vertical-align: top; }
+  td code { color: var(--fizz); }
+</style>
+</head>
+<body>
+
+<h1>FizzBuzz with Nothing <span>— the lambda calculus edition</span></h1>
+
+<p>
+  Every value below was computed using <strong>only single-argument arrow
+  functions</strong>: no numbers, no strings, no booleans, no arrays, no
+  operators, no <code>if</code>, no named recursion. A JavaScript translation
+  of Tom Stuart's
+  <a href="https://tomstu.art/programming-with-nothing">Programming with Nothing</a>.
+</p>
+
+<div class="panel">
+  <div class="output" id="output">running…</div>
+  <p class="stats" id="run-stats"></p>
+</div>
+
+<div class="panel">
+  <p>
+    The named definitions are just abbreviations. Substitute them all away and
+    the whole program is <strong>one expression</strong>:
+  </p>
+  <p>
+    <button id="reveal">Show me the program</button>
+    <span class="stats" id="expr-stats"></span>
+  </p>
+  <pre id="expression" hidden></pre>
+</div>
+
+<div class="panel">
+  <p>How everything is smuggled in as functions:</p>
+  <table>
+    <tr><td>number <em>n</em></td><td><code>f =&gt; x =&gt; f(f(…f(x)))</code> — apply f, n times (Church numeral)</td></tr>
+    <tr><td>true / false</td><td><code>x =&gt; y =&gt; x</code> / <code>x =&gt; y =&gt; y</code> — pick one of two things, so <code>IF = b =&gt; b</code></td></tr>
+    <tr><td>pair</td><td><code>x =&gt; y =&gt; f =&gt; f(x)(y)</code> — hold two things, hand them to whoever asks</td></tr>
+    <tr><td>list</td><td>nested pairs of <code>[is_empty, [first, rest]]</code></td></tr>
+    <tr><td>string</td><td>a list of characters; a character is its index into <code>"0123456789BFiuz"</code></td></tr>
+    <tr><td>recursion</td><td>the Z combinator: <code>f =&gt; (x =&gt; f(y =&gt; x(x)(y)))(x =&gt; f(y =&gt; x(x)(y)))</code></td></tr>
+  </table>
+</div>
+
+<script type="module">
+  import { FIZZBUZZ } from '../fizzbuzz.js';
+  import { toArray, toString } from '../decode.js';
+
+  const started = performance.now();
+  const lines = toArray(FIZZBUZZ).map(toString);
+  const elapsed = performance.now() - started;
+
+  document.getElementById('output').innerHTML = lines
+    .map((s, i) => {
+      const cls = s === 'FizzBuzz' ? 'fizzbuzz'
+        : s === 'Fizz' ? 'fizz'
+        : s === 'Buzz' ? 'buzz'
+        : 'n';
+      return `<span class="${cls}">${s}</span>`;
+    })
+    .join('');
+  document.getElementById('run-stats').textContent =
+    `Evaluated 100 Church-encoded strings in ${elapsed.toFixed(0)}ms.`;
+
+  const button = document.getElementById('reveal');
+  button.addEventListener('click', async () => {
+    const pre = document.getElementById('expression');
+    if (!pre.hidden) { pre.hidden = true; button.textContent = 'Show me the program'; return; }
+    if (!pre.textContent) {
+      const source = await fetch('../dist/fizzbuzz-nothing.js').then(r => r.text());
+      const expression = source.replace(/^\/\/[^\n]*\n\/\/[^\n]*\nexport default\n/, '').replace(/;\s*$/, '');
+      pre.textContent = expression;
+      document.getElementById('expr-stats').textContent =
+        `${expression.length.toLocaleString()} characters, and it runs — the grid above can be produced by pasting this into a console.`;
+    }
+    pre.hidden = false;
+    button.textContent = 'Hide the program';
+  });
+</script>
+
+</body>
+</html>
