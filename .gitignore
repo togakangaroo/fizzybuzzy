@@ -1,5 +1,6 @@
 # build artifacts (fonts are rebuilt with uv run {cheat,real}/build.py)
 dist/
+!with-fonts/dist/
 
 # python
 __pycache__/
