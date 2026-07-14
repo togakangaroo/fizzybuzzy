@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>FizzBuzz in x86 Machine Code</title>
+        <style>
+         :root {
+             color-scheme: light dark;
+             --fizz: light-dark(#1a6fd4, #5ba3f5);
+             --buzz: light-dark(#d4661a, #f5a35b);
+             --fizzbuzz: light-dark(#8a3fc4, #c08df0);
+             --dim: color-mix(in srgb, currentColor 30%, transparent);
+             --faint: color-mix(in srgb, currentColor 8%, transparent);
+         }
+         body {
+             font-family: system-ui, sans-serif;
+             max-width: 60rem;
+             margin: 2rem auto;
+             padding: 0 1rem;
+         }
+         h1 { margin-bottom: 0.25rem; }
+         .subtitle { opacity: 0.7; margin-top: 0; }
+         .fizz-c { color: var(--fizz); }
+         .buzz-c { color: var(--buzz); }
+
+         .controls { margin: 1rem 0; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+         button { font-size: 1rem; padding: 0.35rem 0.9rem; }
+
+         .stage {
+             display: grid;
+             grid-template-columns: auto 1fr;
+             gap: 1rem;
+             align-items: start;
+         }
+         @media (max-width: 60rem) { .stage { grid-template-columns: 1fr; } }
+         .panel {
+             border: 1px solid var(--dim);
+             border-radius: 8px;
+             padding: 0.75rem 1rem;
+         }
+         .panel h2 { margin: 0 0 0.5rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; }
+
+         /* The "monitor". v86 renders text mode into the inner div. */
+         #screen_container {
+             background: #0a0a0a;
+             color: #aaa;
+             border-radius: 6px;
+             padding: 0.75rem;
+             display: inline-block;
+         }
+         #screen_container > div {
+             white-space: pre;
+             font: 13px/13px ui-monospace, monospace;
+         }
+         #screen_container canvas { display: none; }
+
+         #hexdump {
+             font-family: ui-monospace, monospace;
+             font-size: 0.72rem;
+             line-height: 1.5;
+             white-space: pre;
+             overflow-x: auto;
+         }
+         #hexdump .sig { color: var(--fizzbuzz); font-weight: bold; }
+         #hexdump .limit { background: var(--faint); outline: 1px solid var(--fizzbuzz); border-radius: 2px; }
+         #hexdump .strings { color: var(--buzz); }
+         #hexdump .code { color: var(--fizz); }
+         #hexdump .pad { opacity: 0.35; }
+
+         #asm {
+             font-family: ui-monospace, monospace;
+             font-size: 0.8rem;
+             line-height: 1.45;
+             white-space: pre;
+             overflow-x: auto;
+             margin: 0;
+         }
+         .note { font-size: 0.9rem; opacity: 0.75; }
+        </style>
+    </head>
+    <body>
+        <h1>FizzBuzz in x86 Machine Code</h1>
+        <p class="subtitle">
+            The program is a 512-byte boot sector. The computer it boots on is
+            <a href="https://github.com/copy/v86">v86</a> — an x86 PC emulated in WebAssembly.
+            No operating system is ever loaded: the BIOS reads the floppy's first sector
+            to address <code>7C00</code>, jumps to it, and FizzBuzz talks to the
+            BIOS teletype routine directly.
+        </p>
+
+        <div class="controls">
+            <button id="boot">⏻ Power on</button>
+            <label>Count to
+                <input type="number" id="limit" min="1" max="999" value="100" style="width: 5rem; font-size: 1rem; padding: 0.35rem;">
+            </label>
+            <span class="note" id="status"></span>
+        </div>
+
+        <div class="stage">
+            <div class="panel">
+                <h2>Monitor</h2>
+                <div id="screen_container">
+                    <div></div>
+                    <canvas></canvas>
+                </div>
+            </div>
+            <div class="panel">
+                <h2>The entire program — fizzbuzz.img, 512 bytes</h2>
+                <div id="hexdump">loading…</div>
+                <p class="note">
+                    <span class="code">blue</span> is machine code,
+                    <span class="strings">orange</span> is the string table
+                    (<code>Fizz</code>, <code>Buzz</code>, <code>\r\n</code>),
+                    grey is padding, and the final
+                    <span class="sig">55 AA</span> is the magic number that
+                    tells the BIOS this sector is bootable. The
+                    <span class="limit">outlined pair</span> is the loop
+                    limit — a little-endian word inside the
+                    <code>cmp cx</code> instruction that the "count to"
+                    box patches directly.
+                </p>
+            </div>
+        </div>
+
+        <div class="panel" style="margin-top: 1rem;">
+            <h2>Source — fizzbuzz.asm</h2>
+            <pre id="asm">loading…</pre>
+        </div>
+
+        <footer class="note" style="margin-top: 1.5rem;">
+            Emulation by <a href="https://github.com/copy/v86">v86</a>,
+            copyright Fabian Hemmer (BSD-2-Clause), booting
+            <a href="https://www.seabios.org/">SeaBIOS</a> (LGPLv3) with the
+            <a href="https://github.com/qemu/vgabios">Bochs/Plex86 VGABIOS</a> (LGPLv2.1).
+            The boot sector itself is part of
+            <a href="https://github.com/togakangaroo/fizzybuzzy">fizzybuzzy</a>.
+        </footer>
+
+        <script src="v86/libv86.js"></script>
+        <script>
+         const $ = sel => document.querySelector(sel);
+
+         // Byte layout of the sector, taken from the nasm listing:
+         // code ends where the string table starts, strings end at crlf+3.
+         const CODE_END = 0x7b;     // fizz: label offset
+         const STRINGS_END = 0x88;  // after crlf's terminator
+
+         let image = null;          // the pristine 512 bytes, fetched once
+         let limitOffset = -1;      // where cmp cx's imm16 lives
+
+         async function loadImage() {
+             if (!image) {
+                 const resp = await fetch("fizzbuzz.img");
+                 image = new Uint8Array(await resp.arrayBuffer());
+                 // The only 81 F9 (cmp cx, imm16) in the sector; the
+                 // two bytes after it are the loop limit, little-endian.
+                 limitOffset = image.findIndex((b, i) => b === 0x81 && image[i + 1] === 0xf9) + 2;
+             }
+             return image;
+         }
+
+         function currentLimit() {
+             const n = Math.floor($("#limit").valueAsNumber);
+             return Number.isFinite(n) ? Math.min(999, Math.max(1, n)) : 100;
+         }
+
+         // A copy of the sector with the loop limit patched to n.
+         function patchedImage(n) {
+             const bytes = image.slice();
+             bytes[limitOffset] = n & 0xff;
+             bytes[limitOffset + 1] = n >> 8;
+             return bytes;
+         }
+
+         function renderHexdump(bytes) {
+             const cls = i =>
+                 i === limitOffset || i === limitOffset + 1 ? "code limit" :
+                 i >= 510 ? "sig" :
+                 i >= STRINGS_END ? "pad" :
+                 i >= CODE_END ? "strings" : "code";
+             let out = "";
+             let padRun = false;
+             for (let row = 0; row < 512; row += 16) {
+                 const allPad = cls(row) === "pad" && cls(row + 15) === "pad";
+                 if (allPad) {
+                     if (!padRun) out += `<span class="pad">…            (zero padding)</span>\n`;
+                     padRun = true;
+                     continue;
+                 }
+                 padRun = false;
+                 out += row.toString(16).padStart(4, "0") + "  ";
+                 for (let i = row; i < row + 16; i++) {
+                     const hex = bytes[i].toString(16).padStart(2, "0");
+                     out += `<span class="${cls(i)}">${hex}</span>${i % 16 === 7 ? "  " : " "}`;
+                 }
+                 out += " ";
+                 for (let i = row; i < row + 16; i++) {
+                     const c = bytes[i];
+                     out += `<span class="${cls(i)}">${
+                         c >= 32 && c < 127 ? String.fromCharCode(c).replace("<", "&lt;") : "."
+                     }</span>`;
+                 }
+                 out += "\n";
+             }
+             $("#hexdump").innerHTML = out;
+         }
+
+         async function showSource() {
+             const resp = await fetch("fizzbuzz.asm");
+             $("#asm").textContent = await resp.text();
+         }
+
+         let emulator = null;
+         async function boot() {
+             $("#status").textContent = "booting…";
+             if (emulator) { emulator.destroy(); emulator = null; }
+
+             // v86 wants a real floppy, so hand it a 1.44MB disk whose
+             // first sector is our program and the rest is empty.
+             await loadImage();
+             const sector = patchedImage(currentLimit());
+             renderHexdump(sector);
+             const floppy = new Uint8Array(1474560);
+             floppy.set(sector, 0);
+
+             emulator = new V86({
+                 wasm_path: "v86/v86.wasm",
+                 bios: { url: "v86/seabios.bin" },
+                 vga_bios: { url: "v86/vgabios.bin" },
+                 fda: { buffer: floppy.buffer },
+                 memory_size: 16 * 1024 * 1024,
+                 vga_memory_size: 2 * 1024 * 1024,
+                 screen_container: $("#screen_container"),
+                 autostart: true,
+             });
+             emulator.add_listener("emulator-started", () => {
+                 $("#status").textContent = "running — a full PC is booting in your tab";
+                 $("#boot").textContent = "⟳ Reboot";
+             });
+         }
+
+         $("#boot").addEventListener("click", boot);
+         $("#limit").addEventListener("change", () => {
+             const sector = patchedImage(currentLimit());
+             renderHexdump(sector);
+             if (emulator) boot();   // new program on the floppy — reboot
+         });
+         loadImage().then(() => renderHexdump(patchedImage(currentLimit())));
+         showSource();
+        </script>
+    </body>
+</html>

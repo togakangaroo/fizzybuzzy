@@ -31,6 +31,11 @@ Fun and unusual FizzBuzz implementations, collected for the talk
   is a regular language — a 3-state DFA over digit classes tracks the
   digit sum mod 3 — and state elimination flattens that DFA into the
   monster fizz branch. Animated demo walks the DFA digit by digit.
+- [`with-x86/`](with-x86/) — FizzBuzz as a 512-byte x86 boot sector,
+  no operating system anywhere: the BIOS jumps straight into it and it
+  prints via the BIOS teletype interrupt. The "computer" is
+  [v86](https://github.com/copy/v86), a PC emulator compiled to
+  WebAssembly — so the demo page boots a whole machine in the tab.
 - [`with-lambda-calculus/`](with-lambda-calculus/) — FizzBuzz from
   single-argument arrow functions and nothing else, a JS translation of
   Tom Stuart's [Programming with Nothing](https://tomstu.art/programming-with-nothing).
