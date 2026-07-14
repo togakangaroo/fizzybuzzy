@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>FizzBuzz with an Ordered List</title>
+        <style>
+         /* Page chrome only — the FizzBuzz "program" lives in the next style block. */
+         :root {
+             color-scheme: light dark;
+             --fizz: light-dark(#1a6fd4, #5ba3f5);
+             --buzz: light-dark(#d4661a, #f5a35b);
+         }
+         body {
+             font-family: system-ui, sans-serif;
+             max-width: 60rem;
+             margin: 2rem auto;
+             padding: 0 1rem;
+         }
+         h1 { margin-bottom: 0.25rem; }
+         .subtitle { opacity: 0.7; margin-top: 0; }
+         .fizz-buzz {
+             display: grid;
+             grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+             gap: 0.4rem;
+             margin: 1.5rem 0;
+             padding: 0;
+             list-style-position: inside;
+         }
+         .fizz-buzz > li {
+             text-align: center;
+             padding: 0.45rem 0;
+             border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+             border-radius: 6px;
+             font-variant-numeric: tabular-nums;
+         }
+         .fizz-buzz > li:nth-child(3n) { color: var(--fizz); font-weight: 600; }
+         .fizz-buzz > li:nth-child(5n) { color: var(--buzz); font-weight: 600; }
+         .fizz-buzz > li:nth-child(3n):nth-child(5n) {
+             background: linear-gradient(90deg, var(--fizz), var(--buzz));
+             -webkit-background-clip: text;
+             background-clip: text;
+             color: transparent;
+         }
+         code {
+             display: block;
+             white-space: pre;
+             overflow-x: auto;
+             padding: 1rem;
+             border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+             border-radius: 8px;
+             font-size: 0.95rem;
+         }
+        </style>
+
+        <!-- The entire FizzBuzz implementation. The <ol> already numbers its
+             items; we only inject Fizz/Buzz on multiples of 3 and 5 and hide
+             the number marker on those items. FizzBuzz is never spelled out —
+             it composes from ::before "Fizz" meeting ::after "Buzz". -->
+        <style id="fizzbuzz-css">
+.fizz-buzz > li:nth-child(3n)::before {
+    content: "Fizz";
+}
+.fizz-buzz > li:nth-child(5n)::after {
+    content: "Buzz";
+}
+.fizz-buzz > li:nth-child(3n),
+.fizz-buzz > li:nth-child(5n) {
+    list-style: none;
+}
+        </style>
+    </head>
+    <body>
+        <h1>FizzBuzz with an Ordered List</h1>
+        <p class="subtitle">
+            The markup is an <code style="display:inline;padding:0.1em 0.3em;">&lt;ol&gt;</code>
+            of 100 empty <code style="display:inline;padding:0.1em 0.3em;">&lt;li&gt;</code>s,
+            so the browser numbers them for free. Three rules finish the job — and
+            "FizzBuzz" is never written anywhere: it <em>composes</em> when a
+            ::before "Fizz" and an ::after "Buzz" land on the same item.
+        </p>
+
+        <ol class="fizz-buzz">
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+        </ol>
+
+        <section>
+            <h2>The program</h2>
+            <code id="fizzbuzz-css-source"></code>
+        </section>
+
+        <footer>
+            <p>
+                Idea from <a href="https://www.trysmudford.com/blog/fizzbuzz-in-css/">Trys
+                Mudford's FizzBuzz in CSS</a>; a sibling demo implements the
+                <a href="../css-counters/">CSS-counter variant</a> from
+                <a href="https://codepen.io/Lindsor/pen/qdJMwK">Lindsor's codepen</a>.
+            </p>
+        </footer>
+
+        <script>
+         // Presentation only: mirror the FizzBuzz style block into the visible
+         // code element so the slide shows exactly the CSS that is running.
+         document.getElementById("fizzbuzz-css-source").textContent =
+             document.getElementById("fizzbuzz-css").textContent.trim();
+        </script>
+    </body>
+</html>

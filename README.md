@@ -17,6 +17,14 @@ Fun and unusual FizzBuzz implementations, collected for the talk
   the tape, does mod 3 via the digit-sum trick and mod 5 via the last
   digit, and writes the answers to its own tape. Animated in-browser
   simulator with the head, state, and firing rules.
+- [`with-css/`](with-css/) — FizzBuzz in pure CSS, two ways:
+  [`css-counters/`](with-css/css-counters/) uses a CSS counter as the
+  loop variable, `nth-child(3n)`/`nth-child(5n)` as the modulo, and
+  selector specificity as the branch;
+  [`ol-markers/`](with-css/ol-markers/) lets an `<ol>` do the counting
+  and composes FizzBuzz from a ::before "Fizz" meeting an ::after
+  "Buzz" — the word is never spelled out. The browser's style engine is
+  the runtime.
 - [`with-lambda-calculus/`](with-lambda-calculus/) — FizzBuzz from
   single-argument arrow functions and nothing else, a JS translation of
   Tom Stuart's [Programming with Nothing](https://tomstu.art/programming-with-nothing).
