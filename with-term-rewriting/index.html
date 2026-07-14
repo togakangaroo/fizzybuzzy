@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>FizzBuzz with Term Rewriting</title>
+        <style>
+         :root {
+             color-scheme: light dark;
+             --fizz: light-dark(#1a6fd4, #5ba3f5);
+             --buzz: light-dark(#d4661a, #f5a35b);
+             --fizzbuzz: light-dark(#8a3fc4, #c08df0);
+             --str: light-dark(#1a8a4a, #6fd49a);
+             --dim: color-mix(in srgb, currentColor 30%, transparent);
+             --faint: color-mix(in srgb, currentColor 8%, transparent);
+         }
+         body {
+             font-family: system-ui, sans-serif;
+             max-width: 60rem;
+             margin: 2rem auto;
+             padding: 0 1rem;
+         }
+         h1 { margin-bottom: 0.25rem; }
+         .subtitle { opacity: 0.7; margin-top: 0; }
+
+         .controls { margin: 1rem 0; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+         button, select { font-size: 1rem; padding: 0.35rem 0.9rem; }
+         #stepno { font-variant-numeric: tabular-nums; opacity: 0.7; }
+
+         #rulebox {
+             border: 1px solid var(--dim);
+             border-left: 4px solid var(--fizz);
+             border-radius: 8px;
+             padding: 0.6rem 1rem;
+             margin: 1rem 0;
+             min-height: 2.6rem;
+         }
+
+         .stage {
+             display: grid;
+             grid-template-columns: 1fr 20rem;
+             gap: 1rem;
+             align-items: start;
+         }
+         @media (max-width: 52rem) { .stage { grid-template-columns: 1fr; } }
+         .panel {
+             border: 1px solid var(--dim);
+             border-radius: 8px;
+             padding: 0.75rem 1rem;
+         }
+         .panel h2 { margin: 0 0 0.5rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; }
+
+         #tree {
+             font-family: ui-monospace, monospace;
+             font-size: 0.9rem;
+             line-height: 1.55;
+             white-space: pre;
+             overflow-x: auto;
+             margin: 0;
+             min-height: 18rem;
+         }
+         #tree .new {
+             background: color-mix(in srgb, var(--fizz) 18%, transparent);
+             outline: 1.5px solid var(--fizz);
+             border-radius: 3px;
+         }
+         #tree .t-str { color: var(--str); }
+         #tree .t-num { color: var(--buzz); }
+         #tree .t-kw  { color: var(--fizzbuzz); }
+
+         #rules { list-style: none; margin: 0; padding: 0; font-size: 0.82rem; }
+         #rules li {
+             padding: 0.35rem 0.5rem;
+             border-radius: 6px;
+             opacity: 0.65;
+         }
+         #rules li span { opacity: 0.75; }
+         #rules li.active {
+             opacity: 1;
+             background: var(--faint);
+             outline: 1.5px solid var(--fizz);
+         }
+         #rules code, #rulebox code {
+             font-family: ui-monospace, monospace;
+             background: var(--faint);
+             padding: 0 3px;
+             border-radius: 3px;
+         }
+
+         #out {
+             display: grid;
+             grid-template-columns: repeat(auto-fill, minmax(5.2rem, 1fr));
+             gap: 0.3rem;
+             margin-top: 1rem;
+         }
+         #out .cell {
+             text-align: center;
+             padding: 0.25rem 0.2rem;
+             border: 1px solid var(--dim);
+             border-radius: 5px;
+             font-size: 0.9rem;
+             font-variant-numeric: tabular-nums;
+         }
+         #out .cell.fizz { color: var(--fizz); border-color: var(--fizz); }
+         #out .cell.buzz { color: var(--buzz); border-color: var(--buzz); }
+         #out .cell.fizzbuzz { color: var(--fizzbuzz); border-color: var(--fizzbuzz); font-weight: 600; }
+
+         footer { margin-top: 2rem; font-size: 0.9rem; opacity: 0.7; }
+        </style>
+    </head>
+    <body>
+        <h1>FizzBuzz with Term Rewriting</h1>
+        <p class="subtitle">
+            The program is C. A stack of rewrite rules is applied until no rule
+            fires — and the normal form happens to be a Clojure program, which we
+            then evaluate. All of it runs in your browser, in ClojureScript,
+            via <a href="https://github.com/babashka/scittle">Scittle</a>.
+        </p>
+
+        <div class="controls">
+            <button id="play">▶ Run</button>
+            <button id="step">Step</button>
+            <button id="reset">Reset</button>
+            <label>speed
+                <select id="speed">
+                    <option value="900">slow</option>
+                    <option value="450" selected>normal</option>
+                    <option value="150">fast</option>
+                </select>
+            </label>
+            <span id="stepno"></span>
+        </div>
+
+        <div id="rulebox">Loading Scittle…</div>
+
+        <div class="stage">
+            <div class="panel">
+                <h2>The term</h2>
+                <pre id="tree"></pre>
+            </div>
+            <div class="panel">
+                <h2>Rewrite rules</h2>
+                <ol id="rules"></ol>
+            </div>
+        </div>
+
+        <div id="out"></div>
+
+        <footer>
+            Approach lovingly stolen from Kyle Kingsbury (aphyr)&rsquo;s
+            <a href="https://aphyr.com/posts/353-rewriting-the-technical-interview">Rewriting the Technical
+            Interview</a>, which does this in Clojure on the JVM &mdash; go read it,
+            Vidrun deserves your attention. Ported to the browser with
+            <a href="https://github.com/babashka/scittle">Scittle</a> /
+            <a href="https://github.com/babashka/sci">SCI</a> by Michiel Borkent
+            (borkdude). Part of <em>Ranking FizzBuzz for Fun and Not Profit</em>.
+        </footer>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/scittle/0.8.31/scittle.js" integrity="sha512-xPowcB58Rue+69ajIpjDlvgLxmoozJJZ8INOc0JbX337CWO9Qxpfwy6KwfVkvDJtxttmKm6hcSl7OSx3R48ZlA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+        <script type="application/x-scittle">
+;; FizzBuzz by term rewriting, after aphyr's "Rewriting the Technical
+;; Interview". The C source below is never parsed by a C parser: three
+;; character-level rules make it legal EDN, the Clojure reader gives us a
+;; tree, and then ordered rewrite rules fire (leftmost-innermost) until the
+;; term reaches normal form. The normal form is Clojure; we eval it.
+
+(require '[clojure.string :as str])
+
+;; ---------------------------------------------------------------- the program
+
+(def csrc
+"for (i = 1; i < 101; i++) {
+  if (i % 15 == 0) {
+    println(\"FizzBuzz\");
+  } else if (i % 3 == 0) {
+    println(\"Fizz\");
+  } else if (i % 5 == 0) {
+    println(\"Buzz\");
+  } else {
+    println(i);
+  }
+}")
+
+;; ---------------------------------------------------------------- the rules
+
+(def pct (symbol "%"))
+(def ops #{pct '== '< '=})
+(def kws '#{if else for})
+(def fn-syms '#{println})
+
+(defn operand? [x]
+  (not (and (symbol? x) (or (ops x) (kws x)))))
+
+(defn unwrap
+  "C tests read as one-element lists once infix goes prefix: ((== … 0)). Peel."
+  [t]
+  (if (and (seq? t) (= 1 (count t))) (first t) t))
+
+(def rules
+  [{:id :call :name "ƒ(x) → (ƒ x)" :window 2
+    :desc "A symbol naming a function, followed by a list: that's a C call. Shove the function inside its own parens."
+    :match (fn [[f args]]
+             (when (and (fn-syms f) (seq? args))
+               (apply list (cons f args))))}
+
+   {:id :incr :name "i++ → (++ i)"
+    :desc "<code>i++</code> was never syntax — the reader saw one weird three-character symbol. Crack it open."
+    :node (fn [x]
+            (when (and (symbol? x)
+                       (str/ends-with? (name x) "++")
+                       (> (count (name x)) 2))
+              (list '++ (symbol (subs (name x) 0 (- (count (name x)) 2))))))}
+
+   {:id :infix :name "a ⊕ b → (⊕ a b)" :window 3
+    :desc "Three sibling terms where the middle one is an operator go prefix. Leftmost match first."
+    :match (fn [[a op b]]
+             (when (and (symbol? op) (ops op) (operand? a) (operand? b))
+               (list op a b)))}
+
+   {:id :elif :name "else if …" :window 4
+    :desc "<code>else if test [block]</code> collapses into a single <code>(elif test [block])</code> node."
+    :match (fn [[a b t blk]]
+             (when (and (= a 'else) (= b 'if) (seq? t) (vector? blk))
+               (list 'elif (unwrap t) blk)))}
+
+   {:id :else :name "else …" :window 2
+    :desc "A trailing <code>else [block]</code> becomes <code>(else* [block])</code>."
+    :match (fn [[a blk]]
+             (when (and (= a 'else) (vector? blk))
+               (list 'else* blk)))}
+
+   {:id :if :name "if → cond" :window 3
+    :desc "<code>if test [block]</code> seeds a <code>(cond test (do …))</code>."
+    :match (fn [[a t blk]]
+             (when (and (= a 'if) (seq? t) (vector? blk))
+               (list 'cond (unwrap t) (apply list (cons 'do blk)))))}
+
+   {:id :fold-elif :name "cond ∘ elif" :window 2
+    :desc "A cond followed by an elif absorbs it as another test/branch pair."
+    :match (fn [[c e]]
+             (when (and (seq? c) (= (first c) 'cond)
+                        (seq? e) (= (first e) 'elif))
+               (apply list (concat c [(second e) (apply list (cons 'do (nth e 2)))]))))}
+
+   {:id :fold-else :name "cond ∘ else" :window 2
+    :desc "A cond followed by an else* absorbs it as the <code>:else</code> arm."
+    :match (fn [[c e]]
+             (when (and (seq? c) (= (first c) 'cond)
+                        (seq? e) (= (first e) 'else*))
+               (apply list (concat c [:else (apply list (cons 'do (second e)))]))))}
+
+   {:id :for :name "for → loop/recur" :window 3
+    :desc "<code>for ((= i 1) test step) [body]</code> becomes <code>(loop [i 1] (when test … (recur step)))</code>."
+    :match (fn [[f hdr body]]
+             (when (and (= f 'for) (seq? hdr) (= 3 (count hdr)) (vector? body))
+               (let [[bnd test stp] (vec hdr)]
+                 (when (and (seq? bnd) (= (first bnd) '=))
+                   (list 'loop [(second bnd) (nth bnd 2)]
+                         (apply list (concat ['when test] body [(list 'recur stp)])))))))}
+
+   {:id :vocab :name "translate vocabulary"
+    :desc "<code>%</code> is <code>mod</code>, <code>==</code> is <code>=</code>, <code>++</code> is <code>inc</code>, and <code>println</code> is this page's <code>print!</code>."
+    :node (let [renames {pct 'mod, '== '=, '++ 'inc, 'println 'print!}]
+            (fn [x] (when (symbol? x) (renames x))))}])
+
+;; ------------------------------------------------------------- the rewriter
+
+(defn mark* [x] (vary-meta x assoc :mark true))
+
+(defn rebuild [node ch]
+  (if (vector? node) (vec ch) (apply list ch)))
+
+(defn try-window [rule ch]
+  (when-let [n (:window rule)]
+    (loop [i 0]
+      (when (<= (+ i n) (count ch))
+        (if-let [r ((:match rule) (subvec ch i (+ i n)))]
+          [i n (mark* r)]
+          (recur (inc i)))))))
+
+(defn apply-rule
+  "One application of one rule, leftmost-innermost. New form, or nil."
+  [rule form]
+  (if (coll? form)
+    (let [ch (vec form)]
+      (or (loop [i 0]
+            (when (< i (count ch))
+              (if-let [c (apply-rule rule (ch i))]
+                (rebuild form (assoc ch i c))
+                (recur (inc i)))))
+          (when-let [[i n r] (try-window rule ch)]
+            (rebuild form (concat (subvec ch 0 i) [r] (subvec ch (+ i n)))))
+          (when-let [m (:node rule)]
+            (when-let [r (m form)] (mark* r)))))
+    (when-let [m (:node rule)]
+      (when-let [r (m form)] (mark* r)))))
+
+(defn rewrite-step [form]
+  (some (fn [rule]
+          (when-let [f (apply-rule rule form)]
+            {:rule rule :form f}))
+        rules))
+
+(defn strip
+  "Remove :mark metadata everywhere."
+  [x]
+  (cond
+    (vector? x) (vec (map strip x))
+    (coll? x)   (apply list (map strip x))
+    (symbol? x) (with-meta x nil)
+    :else x))
+
+;; ------------------------------------------------------------ pretty-printer
+
+(defn escape [s]
+  (-> s (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;")))
+
+(defn atom-html [x]
+  (cond
+    (string? x)  (str "<span class='t-str'>" (escape (pr-str x)) "</span>")
+    (number? x)  (str "<span class='t-num'>" x "</span>")
+    (keyword? x) (str "<span class='t-kw'>" x "</span>")
+    :else        (escape (pr-str x))))
+
+(defn wrap-mark [form html]
+  (if (:mark (meta form))
+    (str "<span class='new'>" html "</span>")
+    html))
+
+(defn spaces [n] (apply str (repeat n " ")))
+
+(defn render-inline [form]
+  (wrap-mark form
+    (if (coll? form)
+      (let [[o c] (if (vector? form) ["[" "]"] ["(" ")"])]
+        (str o (str/join " " (map render-inline form)) c))
+      (atom-html form))))
+
+(defn render [form ind]
+  (cond
+    (not (coll? form)) (wrap-mark form (atom-html form))
+    (<= (count (pr-str form)) 48) (render-inline form)
+    :else
+    (let [ind2 (+ ind 2)
+          head (first form)]
+      (wrap-mark form
+        (cond
+          (vector? form)
+          (str "[" (str/join (str "\n" (spaces (inc ind)))
+                             (map (fn [x] (render x (inc ind))) form)) "]")
+
+          (= head 'cond)
+          (str "(" (render-inline head) "\n"
+               (str/join "\n"
+                 (map (fn [[t b]]
+                        (str (spaces ind2) (render-inline t) " " (render b ind2)))
+                      (partition 2 (rest form))))
+               ")")
+
+          ('#{loop when} head)
+          (str "(" (render-inline head) " " (render-inline (second form)) "\n"
+               (str/join "\n"
+                 (map (fn [x] (str (spaces ind2) (render x ind2))) (drop 2 form)))
+               ")")
+
+          :else
+          (str "(" (render-inline head) "\n"
+               (str/join "\n"
+                 (map (fn [x] (str (spaces ind2) (render x ind2))) (rest form)))
+               ")"))))))
+
+(defn render-program [forms]
+  (str/join "\n\n" (map (fn [f] (render f 0)) forms)))
+
+;; ------------------------------------------------------- character rewriting
+
+(def char-rules
+  [{:id :semi :name "; → ,"
+    :desc "The reader thinks <code>;</code> starts a comment — but commas are whitespace in Clojure, so every statement terminator can simply become one."
+    :chars #{","} :apply (fn [s] (str/replace s ";" ","))}
+   {:id :brace :name "{ } → [ ]"
+    :desc "Braces would read as map literals: even counts, unique keys — no thanks. Square brackets read as vectors: ordered, any length. Blocks are now data."
+    :chars #{"[" "]"} :apply (fn [s] (-> s (str/replace "{" "[") (str/replace "}" "]")))}])
+
+(defn text-html [s hl]
+  (apply str
+    (map (fn [ch]
+           (let [c (str ch) e (escape c)]
+             (if (hl c) (str "<span class='new'>" e "</span>") e)))
+         s)))
+
+;; pseudo-rules, for the pipeline panel
+(def read-rule
+  {:id :read :name "read"
+   :desc "The source is legal EDN now, so the reader hands us a tree — for free. Note what it did <b>not</b> do: <code>i++</code> is one weird symbol, and <code>=</code>, <code>==</code>, <code>%</code> are just symbols too."})
+(def eval-rule
+  {:id :eval :name "eval"
+   :desc "No rule fires anymore: the term is in <b>normal form</b>, and the normal form is a Clojure program. Evaluate it."})
+
+;; ------------------------------------------------------------ compute frames
+
+(def result
+  (try
+    (let [s1 ((:apply (first char-rules)) csrc)
+          s2 ((:apply (second char-rules)) s1)
+          forms0 (vec (js/scittle.core.eval_string (str "(quote [" s2 "\n])")))
+          base [{:kind :text :html (text-html csrc #{}) :rule nil}
+                {:kind :text :html (text-html s1 (:chars (first char-rules)))
+                 :rule (first char-rules)}
+                {:kind :text :html (text-html s2 (:chars (second char-rules)))
+                 :rule (second char-rules)}
+                {:kind :form :html (render-program forms0) :rule read-rule}]
+          rw (loop [form forms0 acc []]
+               (if (> (count acc) 200)
+                 acc
+                 (if-let [{:keys [rule form]} (rewrite-step form)]
+                   (recur (strip form)
+                          (conj acc {:kind :form :html (render-program form) :rule rule}))
+                   acc)))
+          final (loop [form forms0]
+                  (if-let [{:keys [form]} (rewrite-step form)]
+                    (recur (strip form))
+                    form))]
+      {:frames (conj (into base rw)
+                     {:kind :eval :html (render-program final) :rule eval-rule})
+       :final final})
+    (catch :default e
+      {:error (str e)})))
+
+;; ------------------------------------------------------------------- the UI
+
+(defn el [id] (js/document.getElementById id))
+
+(defn print! [x]
+  (let [d (js/document.createElement "div")]
+    (set! (.-className d)
+          (cond (= x "FizzBuzz") "cell fizzbuzz"
+                (= x "Fizz")     "cell fizz"
+                (= x "Buzz")     "cell buzz"
+                :else            "cell"))
+    (set! (.-textContent d) (str x))
+    (.appendChild (el "out") d)))
+
+(if-let [err (:error result)]
+  (set! (.-innerHTML (el "rulebox")) (str "<b>error:</b> " (escape err)))
+  (let [frames (:frames result)
+        final  (:final result)
+        nframes (count frames)
+        idx (atom 0)
+        timer (atom nil)
+        pipeline (concat char-rules [read-rule] rules [eval-rule])
+        run-program!
+        (fn []
+          (set! (.-innerHTML (el "out")) "")
+          (js/scittle.core.eval_string
+            (pr-str (apply list (cons 'do final)))))
+        pause!
+        (fn []
+          (when-let [t @timer] (js/clearInterval t) (reset! timer nil))
+          (set! (.-textContent (el "play")) "▶ Run"))
+        show!
+        (fn []
+          (let [{:keys [kind html rule]} (nth frames @idx)]
+            (set! (.-innerHTML (el "tree")) html)
+            (set! (.-innerHTML (el "rulebox"))
+                  (if rule
+                    (str "<b>" (:name rule) "</b> &mdash; " (:desc rule))
+                    "The starting program: FizzBuzz, in C. No Clojure in sight."))
+            (set! (.-textContent (el "stepno"))
+                  (str (inc @idx) " / " nframes))
+            (.forEach (js/document.querySelectorAll "#rules li")
+                      (fn [li]
+                        (.toggle (.-classList li) "active"
+                                 (= (.-id li) (str "rule-" (name (or (:id rule) :none)))))))
+            (when (= kind :eval) (run-program!))))
+        step! (fn [] (when (< @idx (dec nframes)) (swap! idx inc) (show!)))
+        play!
+        (fn []
+          (pause!)
+          (when (= @idx (dec nframes))
+            (reset! idx 0) (set! (.-innerHTML (el "out")) "") (show!))
+          (reset! timer
+                  (js/setInterval
+                    (fn [] (if (< @idx (dec nframes)) (step!) (pause!)))
+                    (js/parseInt (.-value (el "speed")))))
+          (set! (.-textContent (el "play")) "⏸ Pause"))]
+
+    ;; expose print! so the eval'd normal form can call it
+    (set! (.-innerHTML (el "rules"))
+          (apply str
+            (map (fn [r]
+                   (str "<li id='rule-" (name (:id r)) "'><b>" (:name r)
+                        "</b><br><span>" (:desc r) "</span></li>"))
+                 pipeline)))
+
+    (.addEventListener (el "play") "click"
+                       (fn [] (if @timer (pause!) (play!))))
+    (.addEventListener (el "step") "click"
+                       (fn [] (pause!) (step!)))
+    (.addEventListener (el "reset") "click"
+                       (fn []
+                         (pause!) (reset! idx 0)
+                         (set! (.-innerHTML (el "out")) "")
+                         (show!)))
+    (show!)))
+        </script>
+    </body>
+</html>

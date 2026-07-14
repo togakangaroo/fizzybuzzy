@@ -36,6 +36,15 @@ Fun and unusual FizzBuzz implementations, collected for the talk
   prints via the BIOS teletype interrupt. The "computer" is
   [v86](https://github.com/copy/v86), a PC emulator compiled to
   WebAssembly — so the demo page boots a whole machine in the tab.
+- [`with-term-rewriting/`](with-term-rewriting/) — FizzBuzz written in
+  C but executed by no C compiler: rewrite rules turn the source into
+  legal EDN, the Clojure reader parses it for free, and tree rewrites
+  run to a fixed point whose normal form is a Clojure program — which
+  then evals. After aphyr's [Rewriting the Technical
+  Interview](https://aphyr.com/posts/353-rewriting-the-technical-interview),
+  ported to run entirely in-browser as ClojureScript via
+  [Scittle](https://github.com/babashka/scittle). Animated demo steps
+  through every rewrite.
 - [`with-lambda-calculus/`](with-lambda-calculus/) — FizzBuzz from
   single-argument arrow functions and nothing else, a JS translation of
   Tom Stuart's [Programming with Nothing](https://tomstu.art/programming-with-nothing).
