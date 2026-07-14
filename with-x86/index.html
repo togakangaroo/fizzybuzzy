@@ -62,7 +62,7 @@
              overflow-x: auto;
          }
          #hexdump .sig { color: var(--fizzbuzz); font-weight: bold; }
-         #hexdump .limit { background: var(--faint); outline: 1px solid var(--fizzbuzz); border-radius: 2px; }
+         #hexdump .limit, #asm .limit { background: var(--faint); outline: 1px solid var(--fizzbuzz); border-radius: 2px; }
          #hexdump .strings { color: var(--buzz); }
          #hexdump .code { color: var(--fizz); }
          #hexdump .pad { opacity: 0.35; }
@@ -205,9 +205,23 @@
              $("#hexdump").innerHTML = out;
          }
 
-         async function showSource() {
+         let asmSource = null;      // the pristine listing, fetched once
+
+         // The asm gets the same treatment as the binary: the imm16 in
+         // "cmp cx, strict word N" is rewritten to the current limit.
+         function renderSource(n) {
+             const escaped = asmSource
+                 .replace(/&/g, "&amp;").replace(/</g, "&lt;");
+             $("#asm").innerHTML = escaped.replace(
+                 /(cmp cx, strict word )(\d+)/,
+                 `$1<span class="limit">${n}</span>`,
+             );
+         }
+
+         async function loadSource() {
              const resp = await fetch("fizzbuzz.asm");
-             $("#asm").textContent = await resp.text();
+             asmSource = await resp.text();
+             renderSource(currentLimit());
          }
 
          let emulator = null;
@@ -240,13 +254,17 @@
          }
 
          $("#boot").addEventListener("click", boot);
+         // Repaint both views of the program on every keystroke...
+         $("#limit").addEventListener("input", () => {
+             if (image) renderHexdump(patchedImage(currentLimit()));
+             if (asmSource) renderSource(currentLimit());
+         });
+         // ...but only reboot once the value is committed (blur/Enter).
          $("#limit").addEventListener("change", () => {
-             const sector = patchedImage(currentLimit());
-             renderHexdump(sector);
              if (emulator) boot();   // new program on the floppy — reboot
          });
          loadImage().then(() => renderHexdump(patchedImage(currentLimit())));
-         showSource();
+         loadSource();
         </script>
     </body>
 </html>
