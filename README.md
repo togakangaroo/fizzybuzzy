@@ -25,6 +25,12 @@ Fun and unusual FizzBuzz implementations, collected for the talk
   and composes FizzBuzz from a ::before "Fizz" meeting an ::after
   "Buzz" — the word is never spelled out. The browser's style engine is
   the runtime.
+- [`with-regex/`](with-regex/) — FizzBuzz as one regular expression
+  with three named groups; whichever group matches is the answer, and
+  the whole 1..100 run is a single `.replace()` call. Divisibility by 3
+  is a regular language — a 3-state DFA over digit classes tracks the
+  digit sum mod 3 — and state elimination flattens that DFA into the
+  monster fizz branch. Animated demo walks the DFA digit by digit.
 - [`with-lambda-calculus/`](with-lambda-calculus/) — FizzBuzz from
   single-argument arrow functions and nothing else, a JS translation of
   Tom Stuart's [Programming with Nothing](https://tomstu.art/programming-with-nothing).

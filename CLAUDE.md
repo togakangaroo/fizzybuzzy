@@ -3,4 +3,4 @@ I've been collecting fun solutions to fizzbuzz here ~/org/roam/20200429214424-fi
 
 # Some rules
 
-when using python use uv
+- when using python always use uv

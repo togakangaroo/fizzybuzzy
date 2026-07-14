@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>FizzBuzz with a Regex</title>
+        <style>
+         :root {
+             color-scheme: light dark;
+             --fizz: light-dark(#1a6fd4, #5ba3f5);
+             --buzz: light-dark(#d4661a, #f5a35b);
+             --fizzbuzz: light-dark(#8a3fc4, #c08df0);
+             --dim: color-mix(in srgb, currentColor 30%, transparent);
+             --faint: color-mix(in srgb, currentColor 8%, transparent);
+         }
+         body {
+             font-family: system-ui, sans-serif;
+             max-width: 60rem;
+             margin: 2rem auto;
+             padding: 0 1rem;
+         }
+         h1 { margin-bottom: 0.25rem; }
+         .subtitle { opacity: 0.7; margin-top: 0; }
+         .fizz-c { color: var(--fizz); }
+         .buzz-c { color: var(--buzz); }
+         .fizzbuzz-c { color: var(--fizzbuzz); }
+
+         #regex-display {
+             font-family: ui-monospace, monospace;
+             font-size: 0.85rem;
+             line-height: 1.6;
+             word-break: break-all;
+             border: 1px solid var(--dim);
+             border-radius: 8px;
+             padding: 0.75rem 1rem;
+             margin: 1rem 0;
+         }
+         #regex-display .branch { border-radius: 3px; padding: 1px 0; }
+         #regex-display .branch.won { background: var(--faint); outline: 2px solid currentColor; }
+
+         .controls { margin: 1rem 0; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+         button, select, input[type=text] { font-size: 1rem; padding: 0.35rem 0.9rem; }
+         input[type=text] { width: 8rem; }
+
+         .stage {
+             display: grid;
+             grid-template-columns: 1fr auto;
+             gap: 1rem;
+             align-items: stretch;
+         }
+         @media (max-width: 46rem) { .stage { grid-template-columns: 1fr; } }
+         .panel {
+             border: 1px solid var(--dim);
+             border-radius: 8px;
+             padding: 0.75rem 1rem;
+         }
+         .panel h2 { margin: 0 0 0.5rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; }
+
+         #digits { font-family: ui-monospace, monospace; font-size: 2.2rem; letter-spacing: 0.15em; min-height: 2.6rem; }
+         #digits .d { opacity: 0.35; }
+         #digits .d.eaten { opacity: 1; }
+         #digits .d.now { opacity: 1; background: var(--faint); outline: 2px solid var(--dim); border-radius: 4px; }
+
+         #dfa { width: 100%; max-width: 26rem; display: block; }
+         #dfa .node circle { fill: Canvas; stroke: currentColor; stroke-width: 1.5; }
+         #dfa .node.accept circle { stroke-width: 3.5; }
+         #dfa .node.active circle { fill: var(--fizz); stroke: var(--fizz); }
+         #dfa .node.active text { fill: Canvas; }
+         #dfa .node text { fill: currentColor; font-size: 15px; font-family: ui-monospace, monospace; }
+         #dfa path.edge { fill: none; stroke: var(--dim); stroke-width: 1.5; }
+         #dfa path.edge.d0 { stroke-dasharray: 2 4; }
+         #dfa path.edge.d2 { stroke-dasharray: 7 4; }
+         #dfa path.edge.taken { stroke: var(--fizz); stroke-width: 3; }
+         .dfa-legend { font-size: 0.85rem; opacity: 0.75; margin-top: 0.25rem; }
+         .dfa-legend .swatch { font-family: ui-monospace, monospace; }
+
+         #buzzcheck { font-size: 1.1rem; margin-top: 0.75rem; }
+         #buzzcheck .pending { opacity: 0.5; }
+
+         #verdict {
+             font-size: 1.6rem;
+             font-weight: 700;
+             min-height: 2.2rem;
+             margin-top: 0.5rem;
+         }
+         .verdict-fizzbuzz {
+             background: linear-gradient(90deg, var(--fizz), var(--buzz));
+             -webkit-background-clip: text;
+             background-clip: text;
+             color: transparent;
+         }
+         #groups { font-family: ui-monospace, monospace; font-size: 0.9rem; opacity: 0.8; min-height: 1.2rem; }
+
+         #out {
+             display: grid;
+             grid-template-columns: repeat(auto-fill, minmax(5.2rem, 1fr));
+             gap: 0.3rem;
+             margin-top: 1rem;
+         }
+         #out .cell {
+             text-align: center;
+             padding: 0.25rem 0.2rem;
+             border: 1px solid var(--dim);
+             border-radius: 5px;
+             font-size: 0.9rem;
+             font-variant-numeric: tabular-nums;
+         }
+         #out .cell.fizz { color: var(--fizz); border-color: var(--fizz); }
+         #out .cell.buzz { color: var(--buzz); border-color: var(--buzz); }
+         #out .cell.fizzbuzz { color: var(--fizzbuzz); border-color: var(--fizzbuzz); font-weight: 600; }
+
+         section.code { margin-top: 1.5rem; }
+         pre { background: var(--faint); border-radius: 8px; padding: 0.75rem 1rem; overflow-x: auto; font-size: 0.85rem; }
+         footer { margin-top: 2rem; font-size: 0.9rem; opacity: 0.7; }
+        </style>
+    </head>
+    <body>
+        <h1>FizzBuzz with a Regex</h1>
+        <p class="subtitle">
+            "Is this decimal string divisible by 3?" is a <em>regular language</em>:
+            a 3-state machine can track the digit sum mod 3 while reading left to
+            right ([0369] stays put, [147] advances one state, [258] advances two).
+            Every finite automaton can be flattened into a regular expression by
+            state elimination &mdash; do that, and FizzBuzz becomes a single regex with
+            three named groups: <span class="fizzbuzz-c">fizzbuzz</span> (divisible
+            by 15), <span class="buzz-c">buzz</span> (ends in 0 or 5), and
+            <span class="fizz-c">fizz</span> (digit sum divisible by 3). Alternation
+            is ordered, so fizzbuzz gets first refusal, and the trailing
+            <code>\b</code> forces each branch to swallow the whole number or fail.
+        </p>
+
+        <div id="regex-display"></div>
+
+        <div class="controls">
+            <button id="play">Play</button>
+            <button id="reset">Reset</button>
+            <label>Speed
+                <select id="speed">
+                    <option value="0.5">0.5&times;</option>
+                    <option value="1" selected>1&times;</option>
+                    <option value="3">3&times;</option>
+                    <option value="10">10&times;</option>
+                </select>
+            </label>
+            <label>or try a number
+                <input type="text" id="tryme" inputmode="numeric" placeholder="e.g. 3735">
+            </label>
+        </div>
+
+        <div class="stage">
+            <div class="panel">
+                <h2>What the fizz branch is computing</h2>
+                <div id="digits"></div>
+                <svg id="dfa" viewBox="0 0 460 250"></svg>
+                <div class="dfa-legend">
+                    reading digits: <span class="swatch">[0369]</span> dotted (+0)
+                    &middot; <span class="swatch">[147]</span> solid (+1)
+                    &middot; <span class="swatch">[258]</span> dashed (+2).
+                    Divisible by 3 &hArr; the walk ends on the double-ringed state.
+                </div>
+                <div id="buzzcheck"></div>
+            </div>
+            <div class="panel">
+                <h2>What the regex actually says</h2>
+                <div id="verdict"></div>
+                <div id="groups"></div>
+            </div>
+        </div>
+
+        <div id="out"></div>
+
+        <section class="code">
+            <p>The whole program is one <code>.replace()</code> call &mdash; the string
+                <code>"1 2 3 &hellip; 100"</code> goes in, FizzBuzz comes out:</p>
+            <pre id="fizzbuzz-code"></pre>
+        </section>
+
+        <footer>
+            Regex by <a href="https://gist.github.com/quackbarc/a24d5f7473cee2e44a4fef83288d0f45">quackbarc</a>.
+        </footer>
+
+        <script src="regex.js"></script>
+        <script>
+         document.getElementById("fizzbuzz-code").textContent =
+             "const fizzbuzz = " + fizzbuzz.toString();
+
+         // ---- color-coded regex display, built from the same source strings ----
+         const disp = document.getElementById("regex-display");
+         const span = (cls, text) => {
+             const el = document.createElement("span");
+             el.className = cls;
+             el.textContent = text;
+             return el;
+         };
+         const branchEls = {};
+         disp.append(span("", "\\b(?:"));
+         for (const [name, src, sep] of [
+             ["fizzbuzz", parts.FIZZBUZZ_SRC, "|"],
+             ["buzz", parts.BUZZ_SRC, "|"],
+             ["fizz", parts.FIZZ_SRC, ""],
+         ]) {
+             branchEls[name] = span(`branch ${name}-c`, src);
+             disp.append(branchEls[name]);
+             if (sep) disp.append(span("", sep));
+         }
+         disp.append(span("", ")\\b"));
+
+         // ---- the mod-3 DFA diagram ----
+         const svg = document.getElementById("dfa");
+         const NS = "http://www.w3.org/2000/svg";
+         const pos = [[230, 55], [355, 195], [105, 195]]; // ≡0 top, ≡1 right, ≡2 left
+         const R = 30;
+
+         const defs = document.createElementNS(NS, "defs");
+         defs.innerHTML = `<marker id="arr" viewBox="0 0 10 10" refX="9" refY="5"
+             markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+             <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker>`;
+         svg.append(defs);
+
+         const edgeEls = {}; // key `${from}-${delta}`
+         const addEdge = (from, delta) => {
+             const to = (from + delta) % 3;
+             const p = document.createElementNS(NS, "path");
+             p.setAttribute("class", `edge d${delta}`);
+             p.setAttribute("marker-end", "url(#arr)");
+             let d;
+             if (delta === 0) { // self loop, pointing away from centroid
+                 const [x, y] = pos[from];
+                 const cx = 230, cy = 148;
+                 const ux = (x - cx), uy = (y - cy);
+                 const len = Math.hypot(ux, uy);
+                 const ox = ux / len, oy = uy / len;
+                 const a = [x + oy * 14 + ox * R, y - ox * 14 + oy * R];
+                 const b = [x - oy * 14 + ox * R, y + ox * 14 + oy * R];
+                 const c1 = [x + oy * 30 + ox * (R + 42), y - ox * 30 + oy * (R + 42)];
+                 const c2 = [x - oy * 30 + ox * (R + 42), y + ox * 30 + oy * (R + 42)];
+                 d = `M${a} C${c1} ${c2} ${b}`;
+             } else {
+                 const [x1, y1] = pos[from], [x2, y2] = pos[to];
+                 const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+                 const dx = x2 - x1, dy = y2 - y1;
+                 const len = Math.hypot(dx, dy);
+                 // bow to the left of travel; both directions between a pair
+                 // then curve to opposite sides
+                 const bow = 26;
+                 const cx = mx - dy / len * bow, cy = my + dx / len * bow;
+                 const sa = [x1 + (cx - x1) / Math.hypot(cx - x1, cy - y1) * R,
+                             y1 + (cy - y1) / Math.hypot(cx - x1, cy - y1) * R];
+                 const sb = [x2 + (cx - x2) / Math.hypot(cx - x2, cy - y2) * R,
+                             y2 + (cy - y2) / Math.hypot(cx - x2, cy - y2) * R];
+                 d = `M${sa} Q${cx},${cy} ${sb}`;
+             }
+             p.setAttribute("d", d);
+             svg.append(p);
+             edgeEls[`${from}-${delta}`] = p;
+         };
+         for (let s = 0; s < 3; s++) for (const delta of [1, 2, 0]) addEdge(s, delta);
+
+         const nodeEls = [];
+         pos.forEach(([x, y], i) => {
+             const g = document.createElementNS(NS, "g");
+             g.setAttribute("class", "node" + (i === 0 ? " accept" : ""));
+             g.innerHTML = `<circle cx="${x}" cy="${y}" r="${R}"/>
+                 ${i === 0 ? `<circle cx="${x}" cy="${y}" r="${R - 5}"/>` : ""}
+                 <text x="${x}" y="${y + 5}" text-anchor="middle">&#8801;${i}</text>`;
+             svg.append(g);
+             nodeEls.push(g);
+         });
+
+         // ---- animation ----
+         const RE = new RegExp(SRC);
+         const N = 100;
+         const outEl = document.getElementById("out");
+         const digitsEl = document.getElementById("digits");
+         const verdictEl = document.getElementById("verdict");
+         const groupsEl = document.getElementById("groups");
+         const buzzEl = document.getElementById("buzzcheck");
+         const playBtn = document.getElementById("play");
+         const speedSel = document.getElementById("speed");
+
+         let n = 1, playing = false, timer = null;
+
+         const setState = (s) =>
+             nodeEls.forEach((el, i) => el.classList.toggle("active", i === s));
+         const clearEdges = () =>
+             Object.values(edgeEls).forEach(e => e.classList.remove("taken"));
+         const wait = (ms) => new Promise(r => { timer = setTimeout(r, ms / speedSel.value); });
+
+         async function animateNumber(num) {
+             const s = String(num);
+             clearEdges();
+             Object.values(branchEls).forEach(el => el.classList.remove("won"));
+             verdictEl.textContent = "";
+             verdictEl.className = "";
+             groupsEl.textContent = "";
+             buzzEl.innerHTML = `<span class="pending">last digit &isin; [05]?</span>`;
+             digitsEl.innerHTML = [...s].map(d => `<span class="d">${d}</span>`).join("");
+             const dEls = digitsEl.querySelectorAll(".d");
+             let state = 0;
+             setState(0);
+             await wait(350);
+             for (let i = 0; i < s.length; i++) {
+                 const digit = +s[i];
+                 const delta = digit % 3;
+                 dEls.forEach((el, j) => {
+                     el.classList.toggle("now", j === i);
+                     el.classList.toggle("eaten", j < i);
+                 });
+                 clearEdges();
+                 edgeEls[`${state}-${delta}`].classList.add("taken");
+                 state = (state + delta) % 3;
+                 setState(state);
+                 await wait(420);
+             }
+             dEls.forEach(el => { el.classList.remove("now"); el.classList.add("eaten"); });
+             const buzzy = /[05]$/.test(s);
+             buzzEl.innerHTML = `last digit &isin; [05]? <strong class="${buzzy ? "buzz-c" : ""}">${buzzy ? "yes" : "no"}</strong>`;
+
+             // now ask the regex itself
+             const m = s.match(RE);
+             const g = m?.groups ?? {};
+             const won = g.fizzbuzz !== undefined ? "fizzbuzz"
+                       : g.buzz !== undefined ? "buzz"
+                       : g.fizz !== undefined ? "fizz" : null;
+             if (won) branchEls[won].classList.add("won");
+             groupsEl.textContent = won
+                 ? `groups.${won} = "${g[won]}"`
+                 : "no branch can reach its trailing \\b — no match";
+             const label = { fizzbuzz: "FizzBuzz", buzz: "Buzz", fizz: "Fizz" }[won] ?? s;
+             verdictEl.textContent = label;
+             verdictEl.className = won ? (won === "fizzbuzz" ? "verdict-fizzbuzz" : `${won}-c`) : "";
+             await wait(650);
+             return { label, won };
+         }
+
+         const addCell = (label, won) => {
+             const c = document.createElement("div");
+             c.className = "cell" + (won ? ` ${won}` : "");
+             c.textContent = label;
+             outEl.append(c);
+             c.scrollIntoView({ block: "nearest" });
+         };
+
+         async function loop() {
+             while (playing && n <= N) {
+                 const { label, won } = await animateNumber(n);
+                 if (!playing) return;
+                 addCell(label, won);
+                 n++;
+             }
+             if (n > N) { playing = false; playBtn.textContent = "Play"; }
+         }
+
+         playBtn.addEventListener("click", () => {
+             playing = !playing;
+             playBtn.textContent = playing ? "Pause" : "Play";
+             if (playing) loop();
+             else clearTimeout(timer);
+         });
+         document.getElementById("reset").addEventListener("click", () => {
+             playing = false;
+             clearTimeout(timer);
+             playBtn.textContent = "Play";
+             n = 1;
+             outEl.innerHTML = "";
+             animateNumber(1).then(() => { /* leave 1 on display, not in grid */ });
+         });
+         document.getElementById("tryme").addEventListener("keydown", (e) => {
+             if (e.key !== "Enter") return;
+             const v = e.target.value.trim();
+             if (!/^\d+$/.test(v)) return;
+             playing = false;
+             clearTimeout(timer);
+             playBtn.textContent = "Play";
+             animateNumber(v);
+         });
+
+         animateNumber(1);
+        </script>
+    </body>
+</html>
