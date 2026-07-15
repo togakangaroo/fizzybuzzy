@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>FizzBuzz: Honorable Mentions</title>
+        <style>
+         :root {
+             color-scheme: light dark;
+             --fizz: light-dark(#1a6fd4, #5ba3f5);
+             --buzz: light-dark(#d4661a, #f5a35b);
+             --border: color-mix(in srgb, currentColor 20%, transparent);
+         }
+         body {
+             font-family: system-ui, sans-serif;
+             max-width: 60rem;
+             margin: 2rem auto;
+             padding: 0 1rem;
+             line-height: 1.5;
+         }
+         h1 { margin-bottom: 0.25rem; }
+         .subtitle { opacity: 0.7; margin-top: 0; }
+
+         .card {
+             border: 1px solid var(--border);
+             border-radius: 12px;
+             padding: 1.25rem 1.5rem 1.5rem;
+             margin: 1.75rem 0;
+         }
+         .card h2 {
+             margin: 0 0 0.35rem;
+             display: flex;
+             align-items: baseline;
+             gap: 0.6rem;
+             flex-wrap: wrap;
+         }
+         .card h2 a { color: inherit; text-decoration: none; }
+         .card h2 a:hover { text-decoration: underline; }
+         .source {
+             font-size: 0.85rem;
+             font-weight: normal;
+             opacity: 0.6;
+             font-family: ui-monospace, monospace;
+         }
+         .card p.blurb { margin: 0.25rem 0 1rem; }
+         .card p.blurb code {
+             font-family: ui-monospace, monospace;
+             background: color-mix(in srgb, currentColor 8%, transparent);
+             padding: 0.05rem 0.3rem;
+             border-radius: 4px;
+         }
+
+         .embed-wrap {
+             position: relative;
+             border: 1px solid var(--border);
+             border-radius: 8px;
+             overflow: hidden;
+             background: color-mix(in srgb, currentColor 4%, transparent);
+         }
+         iframe {
+             display: block;
+             width: 100%;
+             height: 420px;
+             border: 0;
+         }
+         .embed-fallback {
+             padding: 2rem 1.5rem;
+             text-align: center;
+             opacity: 0.75;
+         }
+         .embed-fallback a { color: var(--fizz); }
+
+         .openlink {
+             display: inline-flex;
+             align-items: center;
+             gap: 0.35rem;
+             margin-top: 0.75rem;
+             font-size: 0.95rem;
+         }
+         .openlink a {
+             color: var(--fizz);
+             text-decoration: none;
+         }
+         .openlink a:hover { text-decoration: underline; }
+
+         footer {
+             margin-top: 2.5rem;
+             opacity: 0.6;
+             font-size: 0.9rem;
+         }
+        </style>
+    </head>
+    <body>
+        <h1>Honorable Mentions</h1>
+        <p class="subtitle">
+            These are well known entries in the genre of people refusing to fizz-buzz normally. They are a wonderful inspiration but are languages and platforms (a type checker, a neural net, a corporate codebase) that don't lend themselves to an in-browser reenactment. Read the originals below.
+        </p>
+
+        <div class="card">
+            <h2>
+                <a href="https://gal.hagever.com/posts/typing-the-technical-interview-in-typescript/" target="_blank" rel="noopener">FizzBuzz in TypeScript's Type System</a>
+                <span class="source">gal.hagever.com</span>
+            </h2>
+            <p class="blurb">
+                No runtime code at all &mdash; the "program" lives entirely in
+                <code>type</code> declarations. Peano numbers are built from
+                nested tuples, <code>Increment</code>/<code>Decrement</code>/
+                <code>Subtract</code> are conditional types with an
+                <code>infer</code>-based unwrap trick, and divisibility falls
+                out of recursive subtraction. A passing test is a successful
+                <code>tsc</code> compilation; a failing one is a type error.
+                The "runtime" is the TypeScript compiler itself.
+            </p>
+            <div class="embed-wrap">
+                <iframe src="https://gal.hagever.com/posts/typing-the-technical-interview-in-typescript/"
+                        loading="lazy" referrerpolicy="no-referrer"
+                        title="FizzBuzz in TypeScript's Type System"></iframe>
+            </div>
+            <p class="openlink">&#8599; <a href="https://gal.hagever.com/posts/typing-the-technical-interview-in-typescript/" target="_blank" rel="noopener">Open the original post</a> (some browsers block the embed above)</p>
+        </div>
+
+        <div class="card">
+            <h2>
+                <a href="https://joelgrus.com/2016/05/23/fizz-buzz-in-tensorflow/" target="_blank" rel="noopener">Fizz Buzz in TensorFlow</a>
+                <span class="source">joelgrus.com</span>
+            </h2>
+            <p class="blurb">
+                Joel Grus's classic: instead of writing the mod-3/mod-5 logic,
+                train a neural network on the binary representation of numbers
+                and their fizzbuzz labels, then let gradient descent
+                approximate the function. It "works," mostly, which is the
+                joke &mdash; a satire of throwing machine learning at problems
+                that don't need it, years before that became a whole genre.
+            </p>
+            <div class="embed-wrap">
+                <iframe src="https://joelgrus.com/2016/05/23/fizz-buzz-in-tensorflow/"
+                        loading="lazy" referrerpolicy="no-referrer"
+                        title="Fizz Buzz in TensorFlow"></iframe>
+            </div>
+            <p class="openlink">&#8599; <a href="https://joelgrus.com/2016/05/23/fizz-buzz-in-tensorflow/" target="_blank" rel="noopener">Open the original post</a> (some browsers block the embed above)</p>
+        </div>
+
+        <div class="card">
+            <h2>
+                <a href="https://github.com/EnterpriseQualityCoding/FizzBuzzEnterpriseEdition" target="_blank" rel="noopener">FizzBuzz Enterprise Edition</a>
+                <span class="source">github.com</span>
+            </h2>
+            <p class="blurb">
+                The cursed one. A fully "enterprise" Java implementation of
+                FizzBuzz complete with abstract factories, strategy patterns,
+                dependency injection, and a class hierarchy several stories
+                tall &mdash; all in service of printing sixteen lines of text.
+                A working satire of enterprise Java architecture that is
+                funnier the longer you scroll through the source tree.
+            </p>
+            <div class="embed-wrap">
+                <a href="https://github.com/EnterpriseQualityCoding/FizzBuzzEnterpriseEdition" target="_blank" rel="noopener">
+                    <img src="enterprise-fizzbuzz.png" alt="Source tree of FizzBuzz Enterprise Edition on GitHub" style="display: block; width: 100%; height: auto;">
+                </a>
+            </div>
+            <p class="openlink">&#8599; <a href="https://github.com/EnterpriseQualityCoding/FizzBuzzEnterpriseEdition" target="_blank" rel="noopener">Open the original repo</a> (GitHub sends a CSP that blocks iframe embedding, so a screenshot stands in here)</p>
+        </div>
+
+        <footer>
+            Back to the <a href="../README.md">full collection</a>.
+        </footer>
+    </body>
+</html>

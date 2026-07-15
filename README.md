@@ -73,3 +73,11 @@ Fun and unusual FizzBuzz implementations, collected for the talk
   repeated subtraction. The runtime is Rockstar's real interpreter — the .NET
   CLR compiled to WebAssembly — vendored gzipped (3.2 MB, down from 9.7) and
   inflated in-browser by a DecompressionStream as it loads.
+- [`honorable-mentions/`](honorable-mentions/) — three from the collection that
+  never got a from-scratch demo because they already live in someone else's
+  runtime: FizzBuzz [encoded in TypeScript's type
+  system](https://gal.hagever.com/posts/typing-the-technical-interview-in-typescript/),
+  FizzBuzz [learned by a neural
+  net](https://joelgrus.com/2016/05/23/fizz-buzz-in-tensorflow/), and the
+  cursed [Enterprise
+  Edition](https://github.com/EnterpriseQualityCoding/FizzBuzzEnterpriseEdition).
