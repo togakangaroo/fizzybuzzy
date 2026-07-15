@@ -56,6 +56,12 @@ Fun and unusual FizzBuzz implementations, collected for the talk
   `(fizz + buzz) || n` does the rest — the words collide into "fizzbuzz" every
   15 on their own. The whole program is a 3-line `cycle` generator and a
   one-line `yield`; the demo animates both cycles ticking in lockstep.
+- [`with-racket-2d/`](with-racket-2d/) — FizzBuzz as a literal 2D table: Racket's
+  `2d` language reads a decision table drawn in Unicode box characters, and
+  `#2dmatch` dispatches on `(modulo n 5)` × `(modulo n 3)` — the program's
+  decision table *is* its decision table. Runs for real via a 188 MB Alpine +
+  Minimal Racket Docker image (`docker build -t fizzbuzz-racket-2d . && docker
+  run --rm fizzbuzz-racket-2d`); the page shows the table and the captured run.
 - [`with-lambda-calculus/`](with-lambda-calculus/) — FizzBuzz from
   single-argument arrow functions and nothing else, a JS translation of Tom
   Stuart's [Programming with
