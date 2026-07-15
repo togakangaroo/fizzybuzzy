@@ -67,3 +67,9 @@ Fun and unusual FizzBuzz implementations, collected for the talk
   Stuart's [Programming with
   Nothing](https://tomstu.art/programming-with-nothing). Church numerals, the Z
   combinator, and one ~11KB inlined expression.
+- [`with-rockstar/`](with-rockstar/) — FizzBuzz as heavy-metal lyrics: Dylan
+  Beattie's [Rockstar](https://codewithrockstar.com/) language, where "a
+  lovestruck ladykiller" is the number 100 and modulo is a power ballad about
+  repeated subtraction. The runtime is Rockstar's real interpreter — the .NET
+  CLR compiled to WebAssembly — vendored gzipped (3.2 MB, down from 9.7) and
+  inflated in-browser by a DecompressionStream as it loads.

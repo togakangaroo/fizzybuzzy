@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>FizzBuzz in Rockstar</title>
+        <style>
+         :root {
+             color-scheme: light dark;
+             --fizz: light-dark(#1a6fd4, #5ba3f5);
+             --buzz: light-dark(#d4661a, #f5a35b);
+             --fizzbuzz: light-dark(#8a3fc4, #c08df0);
+             --dim: color-mix(in srgb, currentColor 30%, transparent);
+             --faint: color-mix(in srgb, currentColor 8%, transparent);
+         }
+         body {
+             font-family: system-ui, sans-serif;
+             max-width: 60rem;
+             margin: 2rem auto;
+             padding: 0 1rem;
+         }
+         h1 { margin-bottom: 0.25rem; }
+         .subtitle { opacity: 0.7; margin-top: 0; }
+
+         .controls { margin: 1rem 0; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+         button { font-size: 1rem; padding: 0.35rem 0.9rem; }
+
+         .stage {
+             display: grid;
+             grid-template-columns: 1fr auto;
+             gap: 1rem;
+             align-items: start;
+         }
+         @media (max-width: 60rem) { .stage { grid-template-columns: 1fr; } }
+         .panel {
+             border: 1px solid var(--dim);
+             border-radius: 8px;
+             padding: 0.75rem 1rem;
+         }
+         .panel h2 { margin: 0 0 0.5rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; }
+
+         #lyrics {
+             width: 100%;
+             box-sizing: border-box;
+             min-height: 30rem;
+             border: none;
+             resize: vertical;
+             background: transparent;
+             color: inherit;
+             font: italic 0.95rem/1.6 Georgia, "Times New Roman", serif;
+             outline: none;
+         }
+
+         /* The "amp". Program output scrolls here. */
+         #output {
+             background: #0a0a0a;
+             color: #ddd;
+             border-radius: 6px;
+             padding: 0.75rem;
+             font: 13px/1.5 ui-monospace, monospace;
+             white-space: pre;
+             min-width: 12rem;
+             max-height: 30rem;
+             overflow-y: auto;
+         }
+         #output .fizz { color: var(--fizz); }
+         #output .buzz { color: var(--buzz); }
+         #output .fizzbuzz { color: var(--fizzbuzz); font-weight: bold; }
+         #output .error { color: #f66; white-space: pre-wrap; }
+
+         .liner dt {
+             font: italic 0.95rem Georgia, "Times New Roman", serif;
+             margin-top: 0.6rem;
+         }
+         .liner dd { margin: 0.15rem 0 0 1.25rem; font-size: 0.9rem; opacity: 0.85; }
+         code { background: var(--faint); padding: 0 0.25em; border-radius: 3px; }
+         .note { font-size: 0.9rem; opacity: 0.75; }
+        </style>
+    </head>
+    <body>
+        <h1>FizzBuzz in Rockstar</h1>
+        <p class="subtitle">
+            The program is heavy-metal lyrics. The language is
+            <a href="https://codewithrockstar.com/">Rockstar</a>, designed by
+            Dylan Beattie so that programs double as power ballads — and the
+            runtime is Rockstar's real interpreter, the Starship engine:
+            the .NET CLR compiled to WebAssembly, running in your tab.
+        </p>
+
+        <div class="controls">
+            <button id="rock" disabled>🤘 Rock</button>
+            <span class="note" id="status">tuning up — downloading the .NET runtime…</span>
+        </div>
+
+        <div class="stage">
+            <div class="panel">
+                <h2>The ballad — fizzbuzz.rock (editable)</h2>
+                <textarea id="lyrics" spellcheck="false">loading…</textarea>
+            </div>
+            <div class="panel">
+                <h2>The amp</h2>
+                <div id="output"></div>
+            </div>
+        </div>
+
+        <div class="panel" style="margin-top: 1rem;">
+            <h2>Why these lyrics are a program</h2>
+            <dl class="liner">
+                <dt>Midnight takes your heart and your soul…</dt>
+                <dd>declares a function <code>Midnight(heart, soul)</code>.
+                    The next two lines are its body: while
+                    <code>heart&nbsp;≥&nbsp;soul</code>, subtract
+                    (<code>without</code>) — modulo by repeated subtraction, so
+                    the lyrics never have to say the unpoetic word
+                    "modulo".</dd>
+                <dt>Desire is a lovestruck ladykiller</dt>
+                <dd>a <em>poetic literal</em>: word lengths mod 10 spell the
+                    digits. <em>a</em>&nbsp;(1) <em>lovestruck</em>&nbsp;(10→0)
+                    <em>ladykiller</em>&nbsp;(10→0) = <code>100</code>, the loop
+                    limit. Likewise <em>Fire is ice</em> makes 3 and
+                    <em>Hate is water</em> makes 5.</dd>
+                <dt>Build my world up</dt>
+                <dd><code>my world = my world + 1</code> — the loop counter,
+                    incremented once per verse.</dd>
+                <dt>If Midnight taking my world, Fire is nothing…</dt>
+                <dd><code>if n mod 3 == 0</code>. <code>taking</code> is a
+                    function call, <code>nothing</code> is zero, and
+                    <code>Shout</code>/<code>Say</code>/<code>Whisper</code>
+                    are all just <code>print</code> — dynamics are for the
+                    performance, not the semantics.</dd>
+            </dl>
+        </div>
+
+        <footer class="note" style="margin-top: 1.5rem;">
+            Rockstar and the Starship engine are by
+            <a href="https://dylanbeattie.net/">Dylan Beattie</a> and
+            contributors (<a href="https://github.com/RockstarLang/rockstar">source</a>,
+            AGPL-3.0); the engine binaries in <code>wasm/</code> are the
+            official WebAssembly build, stored gzipped (3.2&nbsp;MB down from
+            9.7) and inflated in-browser by a DecompressionStream. This page is
+            part of <a href="https://github.com/togakangaroo/fizzybuzzy">fizzybuzzy</a>.
+        </footer>
+
+        <script type="module">
+         const $ = sel => document.querySelector(sel);
+         const output = $("#output");
+
+         fetch("fizzbuzz.rock")
+             .then(r => r.text())
+             .then(text => $("#lyrics").value = text);
+
+         const classify = line =>
+             /^fizzbuzz/i.test(line) ? "fizzbuzz" :
+             /^fizz/i.test(line) ? "fizz" :
+             /^buzz/i.test(line) ? "buzz" : "";
+
+         let running = false;
+         const worker = new Worker("worker.js", { type: "module" });
+         worker.addEventListener("message", ({ data }) => {
+             if (data.type === "ready") {
+                 $("#status").textContent = `${data.status} — ready to rock`;
+                 $("#rock").disabled = false;
+             } else if (data.type === "output") {
+                 for (const line of data.output.split("\n"))
+                     if (line !== "")
+                         output.innerHTML += `<span class="${classify(line)}">${line}</span>\n`;
+                 output.scrollTop = output.scrollHeight;
+             } else if (data.type === "result") {
+                 running = false;
+                 $("#status").textContent = "encore over — edit the lyrics and rock again";
+             } else if (data.type === "error") {
+                 running = false;
+                 output.innerHTML += `<span class="error">${data.error}</span>\n`;
+                 $("#status").textContent = "the band walked off stage";
+             }
+         });
+
+         $("#rock").addEventListener("click", () => {
+             if (running) return;
+             running = true;
+             output.innerHTML = "";
+             $("#status").textContent = "performing…";
+             worker.postMessage({ program: $("#lyrics").value });
+         });
+        </script>
+    </body>
+</html>

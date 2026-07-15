@@ -7,6 +7,10 @@ __pycache__/
 .pytest_cache/
 .venv/
 
+# uncompressed Rockstar engine binaries — only the .wasm.gz twins are
+# committed (gh pages serves them; wasm/fetch-engine.sh recreates both)
+with-rockstar/wasm/_framework/*.wasm
+
 # browser-verification droppings
 .playwright-mcp/
 
