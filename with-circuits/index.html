@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>FizzBuzz on Bare Circuitry</title>
+        <style>
+         :root {
+             color-scheme: light dark;
+             --fizz: light-dark(#1a6fd4, #5ba3f5);
+             --buzz: light-dark(#d4661a, #f5a35b);
+             --fizzbuzz: light-dark(#8a3fc4, #c08df0);
+             --on: light-dark(#0a9c3c, #3ddc74);
+             --dim: color-mix(in srgb, currentColor 30%, transparent);
+             --faint: color-mix(in srgb, currentColor 8%, transparent);
+             --wire-low: color-mix(in srgb, currentColor 22%, transparent);
+         }
+         body {
+             font-family: system-ui, sans-serif;
+             max-width: 60rem;
+             margin: 2rem auto;
+             padding: 0 1rem;
+         }
+         h1 { margin-bottom: 0.25rem; }
+         .subtitle { opacity: 0.7; margin-top: 0; }
+         .fizz-c { color: var(--fizz); }
+         .buzz-c { color: var(--buzz); }
+         .fizzbuzz-c { color: var(--fizzbuzz); }
+
+         .controls { margin: 1rem 0; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+         button, input[type=text] { font-size: 1rem; padding: 0.35rem 0.9rem; }
+         input[type=text] { width: 8rem; }
+
+         .panel {
+             border: 1px solid var(--dim);
+             border-radius: 8px;
+             padding: 0.75rem 1rem;
+             margin: 1rem 0;
+         }
+         .panel h2 { margin: 0 0 0.5rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; }
+
+         /* ---- the machine: switches in, LEDs out ---- */
+         #machine {
+             display: flex;
+             gap: 2.5rem;
+             align-items: center;
+             flex-wrap: wrap;
+         }
+         .bank { text-align: center; }
+         .bank .bank-label { font-size: 0.75rem; opacity: 0.6; margin-top: 0.35rem; }
+         #switches { display: flex; gap: 0.35rem; }
+         #switches button {
+             width: 2rem; height: 3rem;
+             padding: 0;
+             font-family: ui-monospace, monospace;
+             font-size: 0.9rem;
+             border: 1px solid var(--dim);
+             border-radius: 6px;
+             background: var(--faint);
+             color: inherit;
+             cursor: pointer;
+             display: flex; flex-direction: column;
+             align-items: center; justify-content: space-between;
+             padding: 0.25rem 0;
+         }
+         #switches button .lever {
+             width: 0.8rem; height: 1.2rem;
+             border-radius: 4px;
+             background: var(--dim);
+         }
+         #switches button.on .lever { background: var(--on); }
+         #switches button.on { border-color: var(--on); }
+
+         .leds { display: flex; gap: 0.5rem; align-items: flex-end; }
+         .led {
+             width: 1.1rem; height: 1.1rem;
+             border-radius: 50%;
+             border: 2px solid var(--dim);
+             background: transparent;
+             margin: 0 auto;
+         }
+         .led.big { width: 1.7rem; height: 1.7rem; }
+         .led-unit { text-align: center; font-size: 0.7rem; font-family: ui-monospace, monospace; opacity: 0.85; }
+         .led-unit .cap { margin-top: 0.3rem; }
+         .led.lit-n { background: var(--on); border-color: var(--on); box-shadow: 0 0 8px var(--on); }
+         .led.lit-fizz { background: var(--fizz); border-color: var(--fizz); box-shadow: 0 0 12px var(--fizz); }
+         .led.lit-buzz { background: var(--buzz); border-color: var(--buzz); box-shadow: 0 0 12px var(--buzz); }
+
+         #readout { font-family: ui-monospace, monospace; font-size: 2.2rem; min-width: 3.5ch; text-align: right; }
+         #verdict { font-size: 1.6rem; font-weight: 700; min-height: 2.2rem; }
+         .verdict-fizzbuzz {
+             background: linear-gradient(90deg, var(--fizz), var(--buzz));
+             -webkit-background-clip: text;
+             background-clip: text;
+             color: transparent;
+         }
+
+         /* ---- the circuit diagram ---- */
+         #circuit { overflow: auto; }
+         #circuit svg { stroke: currentColor; width: 100%; height: auto; min-width: 40rem; display: block; }
+         #circuit text { fill: currentColor; stroke: none; }
+         #circuit .splitjoinBody { fill: currentColor; }
+         #circuit [class^="net_"], #circuit [class*=" net_"] { stroke: var(--wire-low); transition: stroke 0.1s; }
+         #circuit .hi { stroke: var(--on) !important; }
+         .legend { font-size: 0.85rem; opacity: 0.75; margin-top: 0.4rem; }
+         .legend .hi-swatch { color: var(--on); font-weight: 700; }
+
+         #out {
+             display: grid;
+             grid-template-columns: repeat(auto-fill, minmax(5.2rem, 1fr));
+             gap: 0.3rem;
+             margin-top: 1rem;
+         }
+         #out .cell {
+             text-align: center;
+             border: 1px solid var(--faint);
+             border-radius: 4px;
+             padding: 0.25rem 0.1rem;
+             font-family: ui-monospace, monospace;
+             font-size: 0.9rem;
+         }
+         footer { margin-top: 2rem; font-size: 0.9rem; opacity: 0.8; line-height: 1.5; }
+         footer code { font-family: ui-monospace, monospace; }
+        </style>
+    </head>
+    <body>
+        <h1>FizzBuzz on Bare Circuitry</h1>
+        <p class="subtitle">
+            92 logic gates. No processor, no memory, no clock — 8 wires in,
+            10 LEDs out, and the answer is just voltage settling.
+        </p>
+
+        <div class="panel">
+            <h2>The machine</h2>
+            <div id="machine">
+                <div class="bank">
+                    <div id="switches"></div>
+                    <div class="bank-label">input n (binary, MSB first) — click to flip</div>
+                </div>
+                <div class="bank">
+                    <div class="leds" id="leds"></div>
+                    <div class="bank-label">10 output LEDs</div>
+                </div>
+                <div class="bank">
+                    <div id="readout">0</div>
+                    <div class="bank-label">decimal (for humans)</div>
+                </div>
+                <div class="bank">
+                    <div id="verdict">&nbsp;</div>
+                    <div class="bank-label">what the LEDs spell</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="play">Play 1…100</button>
+            <button id="reset">Reset</button>
+            <label>try a number:
+                <input type="text" id="tryme" inputmode="numeric" placeholder="0–255, Enter">
+            </label>
+        </div>
+
+        <div class="panel">
+            <h2>The circuit — every wire painted from a real evaluation of the netlist</h2>
+            <div id="circuit"></div>
+            <div class="legend">
+                <span class="hi-swatch">green</span> wire = logic 1, faint wire = logic 0.
+                Diagram rendered once from the yosys netlist by netlistsvg;
+                the signal values are recomputed live, gate by gate, from the same netlist JSON.
+            </div>
+        </div>
+
+        <div id="out"></div>
+
+        <footer>
+            <p>
+                The circuit is one 4-bit adder feeding two divisibility
+                detectors. The whole trick: 16 ≡ 1 (mod 3) <em>and</em>
+                (mod 5), so for n = 16·hi + lo both residues of n equal the
+                residue of hi + lo. The adder folds the byte to a 5-bit sum
+                (0–30), and each detector is a small cloud of gates over
+                just those five wires. The 8 number LEDs carry the input,
+                gated off whenever fizz or buzz fires — so the LEDs spell
+                the whole answer, just like the printed version.
+            </p>
+            <p>
+                Source: <code>fizzbuzz.v</code> → yosys → 41 AND, 32 OR,
+                9 XOR, 10 NOT. <code>test.js</code> checks the synthesized
+                netlist against arithmetic on all 256 possible inputs.
+            </p>
+        </footer>
+
+        <script src="circuit.js"></script>
+        <script src="evaluate.js"></script>
+        <script>
+         const mod = FIZZBUZZ_NETLIST.modules.fizzbuzz;
+
+         // --- inline the pre-rendered diagram, make it scale ---
+         const circuitEl = document.getElementById("circuit");
+         circuitEl.innerHTML = FIZZBUZZ_SVG;
+         const svg = circuitEl.querySelector("svg");
+         svg.setAttribute("viewBox", `0 0 ${svg.getAttribute("width")} ${svg.getAttribute("height")}`);
+         svg.removeAttribute("width");
+         svg.removeAttribute("height");
+
+         // cache wire segments per net bit
+         const wireEls = new Map();
+         function wires(bit) {
+             if (!wireEls.has(bit))
+                 wireEls.set(bit, svg.querySelectorAll(".net_" + bit));
+             return wireEls.get(bit);
+         }
+
+         // --- build switches and LEDs ---
+         const switchesEl = document.getElementById("switches");
+         for (let i = 7; i >= 0; i--) {
+             const b = document.createElement("button");
+             b.dataset.bit = i;
+             b.innerHTML = `<span class="lever"></span><span>${i}</span>`;
+             b.addEventListener("click", () => { stop(); show(n ^ (1 << i)); });
+             switchesEl.appendChild(b);
+         }
+         const ledsEl = document.getElementById("leds");
+         const ledFor = {};
+         function addLed(key, cap, big) {
+             const unit = document.createElement("div");
+             unit.className = "led-unit";
+             const led = document.createElement("div");
+             led.className = "led" + (big ? " big" : "");
+             unit.appendChild(led);
+             const capEl = document.createElement("div");
+             capEl.className = "cap";
+             capEl.textContent = cap;
+             unit.appendChild(capEl);
+             ledsEl.appendChild(unit);
+             ledFor[key] = led;
+         }
+         for (let i = 7; i >= 0; i--) addLed("n" + i, "2^" + i, false);
+         addLed("fizz", "FIZZ", true);
+         addLed("buzz", "BUZZ", true);
+
+         const readoutEl = document.getElementById("readout");
+         const verdictEl = document.getElementById("verdict");
+         const outEl = document.getElementById("out");
+
+         let n = 0;
+
+         function show(value) {
+             n = value & 0xff;
+             const { nets, outputs } = NetlistEval.evaluate(mod, { n });
+
+             for (const [bit, v] of nets)
+                 for (const el of wires(bit)) el.classList.toggle("hi", v === 1);
+
+             for (const btn of switchesEl.children)
+                 btn.classList.toggle("on", ((n >> btn.dataset.bit) & 1) === 1);
+             for (let i = 0; i < 8; i++)
+                 ledFor["n" + i].classList.toggle("lit-n", ((outputs.leds >> i) & 1) === 1);
+             ledFor.fizz.classList.toggle("lit-fizz", outputs.fizz === 1);
+             ledFor.buzz.classList.toggle("lit-buzz", outputs.buzz === 1);
+
+             readoutEl.textContent = n;
+             const label = outputs.fizz && outputs.buzz ? "FizzBuzz"
+                         : outputs.fizz ? "Fizz"
+                         : outputs.buzz ? "Buzz"
+                         : String(n);
+             verdictEl.textContent = label;
+             verdictEl.className = outputs.fizz && outputs.buzz ? "verdict-fizzbuzz"
+                                 : outputs.fizz ? "fizz-c"
+                                 : outputs.buzz ? "buzz-c" : "";
+             return label;
+         }
+
+         // --- the "clock": an admitted cheat. The circuit is combinational;
+         // JS increments n and the netlist does the rest. ---
+         const playBtn = document.getElementById("play");
+         let playing = false, timer = null, counter = 0;
+         function stop() {
+             playing = false;
+             clearTimeout(timer);
+             playBtn.textContent = "Play 1…100";
+         }
+         function tick() {
+             if (!playing) return;
+             counter++;
+             const label = show(counter);
+             const cell = document.createElement("div");
+             cell.className = "cell " +
+                 (label === "FizzBuzz" ? "fizzbuzz-c" : label === "Fizz" ? "fizz-c"
+                  : label === "Buzz" ? "buzz-c" : "");
+             cell.textContent = label;
+             outEl.appendChild(cell);
+             if (counter >= 100) { stop(); return; }
+             timer = setTimeout(tick, 450);
+         }
+         playBtn.addEventListener("click", () => {
+             if (playing) { stop(); return; }
+             playing = true;
+             playBtn.textContent = "Pause";
+             if (counter >= 100) { counter = 0; outEl.innerHTML = ""; }
+             tick();
+         });
+         document.getElementById("reset").addEventListener("click", () => {
+             stop();
+             counter = 0;
+             outEl.innerHTML = "";
+             show(0);
+         });
+         document.getElementById("tryme").addEventListener("keydown", (e) => {
+             if (e.key !== "Enter") return;
+             const v = e.target.value.trim();
+             if (!/^\d+$/.test(v) || +v > 255) return;
+             stop();
+             show(+v);
+         });
+
+         show(0);
+        </script>
+    </body>
+</html>

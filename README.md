@@ -45,6 +45,14 @@ Fun and unusual FizzBuzz implementations, collected for the talk
   ported to run entirely in-browser as ClojureScript via
   [Scittle](https://github.com/babashka/scittle). Animated demo steps
   through every rewrite.
+- [`with-circuits/`](with-circuits/) — FizzBuzz on bare circuitry: no
+  processor, no memory, no clock — 8 input wires, 10 LEDs, and 92 logic
+  gates. Since 16 ≡ 1 mod 3 and mod 5, one 4-bit adder folds the byte
+  and two little gate clouds test divisibility; the number LEDs blank
+  out whenever fizz or buzz fires, so the LEDs spell the full answer. Written in Verilog,
+  synthesized by yosys, drawn by netlistsvg; the demo page re-evaluates
+  the real netlist on every input and paints the live signal values
+  onto the schematic.
 - [`with-lambda-calculus/`](with-lambda-calculus/) — FizzBuzz from
   single-argument arrow functions and nothing else, a JS translation of
   Tom Stuart's [Programming with Nothing](https://tomstu.art/programming-with-nothing).
