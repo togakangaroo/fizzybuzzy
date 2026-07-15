@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FizzBuzz Tier List</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --border: color-mix(in srgb, currentColor 20%, transparent);
+    --tile-bg: light-dark(#fff, #24262b);
+    --tile-border: light-dark(#d8d8d8, #3a3c42);
+    --pool-bg: light-dark(#f3f3f3, #1b1c1f);
+
+    --s: light-dark(#ff7f7f, #7a2a2a);
+    --a: light-dark(#ffbf7f, #7a4f1e);
+    --b: light-dark(#ffdf7f, #7a6a1e);
+    --c: light-dark(#bfff7f, #3f5a1e);
+    --d: light-dark(#7fdfff, #1e4a5a);
+    --f: light-dark(#bf7fff, #3f1e5a);
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, sans-serif;
+    max-width: 72rem;
+    margin: 2rem auto;
+    padding: 0 1rem 4rem;
+    line-height: 1.4;
+  }
+  h1 { margin-bottom: 0.1rem; }
+  .subtitle { opacity: 0.7; margin-top: 0; margin-bottom: 1.5rem; }
+
+  .row {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 0.6rem;
+    overflow: hidden;
+    min-height: 5.5rem;
+  }
+  .row-label {
+    flex: 0 0 4.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 800;
+    color: #1a1a1a;
+  }
+  .row[data-tier="S"] .row-label { background: var(--s); }
+  .row[data-tier="A"] .row-label { background: var(--a); }
+  .row[data-tier="B"] .row-label { background: var(--b); }
+  .row[data-tier="C"] .row-label { background: var(--c); }
+  .row[data-tier="D"] .row-label { background: var(--d); }
+  .row[data-tier="F"] .row-label { background: var(--f); }
+
+  .dropzone {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: var(--tile-bg);
+  }
+  .dropzone.dragover {
+    background: color-mix(in srgb, currentColor 6%, var(--tile-bg));
+  }
+
+  #pool {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: var(--pool-bg);
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    min-height: 4.5rem;
+    margin-top: 1.75rem;
+  }
+  #pool::before {
+    content: "Unranked";
+    flex-basis: 100%;
+    font-size: 0.8rem;
+    font-weight: 600;
+    opacity: 0.55;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .tile {
+    width: 8.5rem;
+    min-height: 3.6rem;
+    padding: 0.4rem 0.55rem;
+    border: 1px solid var(--tile-border);
+    border-radius: 8px;
+    background: var(--tile-bg);
+    font-size: 0.78rem;
+    line-height: 1.25;
+    cursor: grab;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+  }
+  .tile:active { cursor: grabbing; }
+  .tile.dragging { opacity: 0.35; }
+  .tile:hover { transform: translateY(-2px); box-shadow: 0 3px 8px rgba(0,0,0,0.15); }
+  .tile a { color: inherit; text-decoration: none; }
+  .tile a:hover { text-decoration: underline; }
+
+  .controls {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 0.6rem;
+  }
+  button {
+    font: inherit;
+    padding: 0.4rem 0.9rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--tile-bg);
+    cursor: pointer;
+  }
+  button:hover { background: color-mix(in srgb, currentColor 8%, var(--tile-bg)); }
+</style>
+</head>
+<body>
+<h1>FizzBuzz Tier List</h1>
+<p class="subtitle">Drag each implementation into a tier. Ranking auto-saves in this browser.</p>
+
+<div id="tiers"></div>
+<div id="pool"></div>
+
+<div class="controls">
+  <button id="reset">Reset ranking</button>
+</div>
+
+<script>
+const TIERS = ["S", "A", "B", "C", "D", "F"];
+
+const ITEMS = [
+  { id: "fonts",         label: "OpenType Font",     href: "with-fonts/demo/real.html" },
+  { id: "waves",         label: "Sine Wave Zero-Crossings", href: "with-waves/index.html" },
+  { id: "turing",        label: "Turing Machine",    href: "with-turing-machine/index.html" },
+  { id: "css-counters",  label: "CSS Counters",      href: "with-css/css-counters/index.html" },
+  { id: "css-ol",        label: "CSS ol Markers",    href: "with-css/ol-markers/index.html" },
+  { id: "regex",         label: "One Regex",         href: "with-regex/index.html" },
+  { id: "x86",           label: "x86 Boot Sector",   href: "with-x86/index.html" },
+  { id: "term-rewriting",label: "Term Rewriting → Clojure", href: "with-term-rewriting/index.html" },
+  { id: "circuits",      label: "Bare Circuitry (Verilog)", href: "with-circuits/index.html" },
+  { id: "cycles",        label: "No Modulo, No If",  href: "with-cycles/index.html" },
+  { id: "racket-2d",     label: "Racket 2D Table",   href: "with-racket-2d/index.html" },
+  { id: "lambda",        label: "Lambda Calculus",   href: "with-lambda-calculus/demo/index.html" },
+  { id: "rockstar",      label: "Rockstar Lyrics",   href: "with-rockstar/index.html" },
+  { id: "hm-typescript", label: "TypeScript Types",  href: "honorable-mentions/index.html" },
+  { id: "hm-tensorflow", label: "Neural Net (TensorFlow)", href: "honorable-mentions/index.html" },
+  { id: "hm-enterprise", label: "Enterprise Edition",href: "honorable-mentions/index.html" },
+];
+
+const STORAGE_KEY = "fizzybuzzy-tier-list";
+
+const tiersEl = document.getElementById("tiers");
+const poolEl = document.getElementById("pool");
+
+TIERS.forEach(t => {
+  const row = document.createElement("div");
+  row.className = "row";
+  row.dataset.tier = t;
+  row.innerHTML = `<div class="row-label">${t}</div><div class="dropzone" data-tier="${t}"></div>`;
+  tiersEl.appendChild(row);
+});
+
+function makeTile(item) {
+  const el = document.createElement("div");
+  el.className = "tile";
+  el.draggable = true;
+  el.dataset.id = item.id;
+  el.innerHTML = `<a href="${item.href}" target="_blank" rel="noopener">${item.label}</a>`;
+  el.addEventListener("dragstart", e => {
+    el.classList.add("dragging");
+    e.dataTransfer.setData("text/plain", item.id);
+    e.dataTransfer.effectAllowed = "move";
+  });
+  el.addEventListener("dragend", () => {
+    el.classList.remove("dragging");
+    save();
+  });
+  return el;
+}
+
+const allZones = [poolEl, ...document.querySelectorAll(".dropzone")];
+allZones.forEach(zone => {
+  zone.addEventListener("dragover", e => {
+    e.preventDefault();
+    zone.classList.add("dragover");
+  });
+  zone.addEventListener("dragleave", () => zone.classList.remove("dragover"));
+  zone.addEventListener("drop", e => {
+    e.preventDefault();
+    zone.classList.remove("dragover");
+    const id = e.dataTransfer.getData("text/plain");
+    const tile = document.querySelector(`.tile[data-id="${id}"]`);
+    if (tile) zone.appendChild(tile);
+    save();
+  });
+});
+
+function save() {
+  const state = {};
+  document.querySelectorAll(".dropzone").forEach(zone => {
+    state[zone.dataset.tier] = [...zone.children].map(t => t.dataset.id);
+  });
+  state.pool = [...poolEl.children].map(t => t.dataset.id);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function load() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  const tiles = Object.fromEntries(ITEMS.map(item => [item.id, makeTile(item)]));
+
+  let state = null;
+  try { state = raw ? JSON.parse(raw) : null; } catch (e) { state = null; }
+
+  if (!state) {
+    ITEMS.forEach(item => poolEl.appendChild(tiles[item.id]));
+    return;
+  }
+
+  const placed = new Set();
+  TIERS.forEach(t => {
+    const zone = document.querySelector(`.dropzone[data-tier="${t}"]`);
+    (state[t] || []).forEach(id => {
+      if (tiles[id]) { zone.appendChild(tiles[id]); placed.add(id); }
+    });
+  });
+  (state.pool || []).forEach(id => {
+    if (tiles[id]) { poolEl.appendChild(tiles[id]); placed.add(id); }
+  });
+  ITEMS.forEach(item => {
+    if (!placed.has(item.id)) poolEl.appendChild(tiles[item.id]);
+  });
+}
+
+document.getElementById("reset").addEventListener("click", () => {
+  localStorage.removeItem(STORAGE_KEY);
+  poolEl.innerHTML = "";
+  document.querySelectorAll(".dropzone").forEach(z => z.innerHTML = "");
+  load();
+});
+
+load();
+</script>
+</body>
+</html>
