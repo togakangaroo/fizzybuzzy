@@ -89,9 +89,10 @@
   }
 
   .tile {
+    position: relative;
     width: 8.5rem;
     min-height: 3.6rem;
-    padding: 0.4rem 0.55rem;
+    padding: 0.4rem 1.5rem 0.4rem 0.55rem;
     border: 1px solid var(--tile-border);
     border-radius: 8px;
     background: var(--tile-bg);
@@ -108,8 +109,64 @@
   .tile:active { cursor: grabbing; }
   .tile.dragging { opacity: 0.35; }
   .tile:hover { transform: translateY(-2px); box-shadow: 0 3px 8px rgba(0,0,0,0.15); }
-  .tile a { color: inherit; text-decoration: none; }
-  .tile a:hover { text-decoration: underline; }
+  .tile .label { flex: 1; }
+  .tile .open-link {
+    position: absolute;
+    right: 0.3rem;
+    bottom: 0.25rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    color: inherit;
+    opacity: 0.45;
+    text-decoration: none;
+    line-height: 1;
+  }
+  .tile .open-link:hover {
+    opacity: 1;
+    background: color-mix(in srgb, currentColor 12%, transparent);
+  }
+  .tile .open-link svg { width: 0.8rem; height: 0.8rem; display: block; }
+
+  .tile .tooltip {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 0.5rem);
+    transform: translateX(-50%) translateY(4px);
+    width: max-content;
+    max-width: 16rem;
+    padding: 0.5rem 0.65rem;
+    border-radius: 8px;
+    background: light-dark(#1f2023, #f2f2f2);
+    color: light-dark(#f2f2f2, #1f2023);
+    font-size: 0.72rem;
+    line-height: 1.4;
+    text-align: left;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.12s ease, transform 0.12s ease;
+    z-index: 10;
+  }
+  .tile .tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: light-dark(#1f2023, #f2f2f2);
+  }
+  .tile:hover .tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+    transition-delay: 0.25s;
+  }
 
   .controls {
     margin-top: 1.5rem;
@@ -142,22 +199,38 @@
 const TIERS = ["S", "A", "B", "C", "D", "F"];
 
 const ITEMS = [
-  { id: "fonts",         label: "OpenType Font",     href: "with-fonts/demo/real.html" },
-  { id: "waves",         label: "Sine Wave Zero-Crossings", href: "with-waves/index.html" },
-  { id: "turing",        label: "Turing Machine",    href: "with-turing-machine/index.html" },
-  { id: "css-counters",  label: "CSS Counters",      href: "with-css/css-counters/index.html" },
-  { id: "css-ol",        label: "CSS ol Markers",    href: "with-css/ol-markers/index.html" },
-  { id: "regex",         label: "One Regex",         href: "with-regex/index.html" },
-  { id: "x86",           label: "x86 Boot Sector",   href: "with-x86/index.html" },
-  { id: "term-rewriting",label: "Term Rewriting → Clojure", href: "with-term-rewriting/index.html" },
-  { id: "circuits",      label: "Bare Circuitry (Verilog)", href: "with-circuits/index.html" },
-  { id: "cycles",        label: "No Modulo, No If",  href: "with-cycles/index.html" },
-  { id: "racket-2d",     label: "Racket 2D Table",   href: "with-racket-2d/index.html" },
-  { id: "lambda",        label: "Lambda Calculus",   href: "with-lambda-calculus/demo/index.html" },
-  { id: "rockstar",      label: "Rockstar Lyrics",   href: "with-rockstar/index.html" },
-  { id: "hm-typescript", label: "TypeScript Types",  href: "honorable-mentions/index.html" },
-  { id: "hm-tensorflow", label: "Neural Net (TensorFlow)", href: "honorable-mentions/index.html" },
-  { id: "hm-enterprise", label: "Enterprise Edition",href: "honorable-mentions/index.html" },
+  { id: "fonts",         label: "OpenType Font",     href: "with-fonts/demo/real.html",
+    blurb: "FizzBuzz as a .ttf: GSUB substitution tables run a mod-3 state machine during text layout." },
+  { id: "waves",         label: "Sine Wave Zero-Crossings", href: "with-waves/index.html",
+    blurb: "sin(πn/3) and sin(πn/5) hit zero exactly on multiples of 3 and 5 — an animated page draws the curves and fills in the answers as they cross." },
+  { id: "turing",        label: "Turing Machine",    href: "with-turing-machine/index.html",
+    blurb: "A genuine single-tape Turing machine: 34 states, 421 rules, mod 3 via digit-sum, mod 5 via last digit." },
+  { id: "css-counters",  label: "CSS Counters",      href: "with-css/css-counters/index.html",
+    blurb: "A CSS counter is the loop variable, nth-child(3n)/nth-child(5n) is the modulo, selector specificity is the branch." },
+  { id: "css-ol",        label: "CSS ol Markers",    href: "with-css/ol-markers/index.html",
+    blurb: "An <ol> does the counting; FizzBuzz comes from a ::before \"Fizz\" meeting an ::after \"Buzz\" — the word is never spelled out." },
+  { id: "regex",         label: "One Regex",         href: "with-regex/index.html",
+    blurb: "One regular expression with three named groups; a 3-state DFA tracks digit-sum mod 3, flattened into the monster fizz branch." },
+  { id: "x86",           label: "x86 Boot Sector",   href: "with-x86/index.html",
+    blurb: "A 512-byte x86 boot sector, no OS — the BIOS jumps straight in and it prints via the teletype interrupt, booted live in a v86 WASM emulator." },
+  { id: "term-rewriting",label: "Term Rewriting → Clojure", href: "with-term-rewriting/index.html",
+    blurb: "C-looking source rewritten by term-rewriting rules into legal EDN, read by the Clojure reader, and evaluated — ported to run in-browser via Scittle." },
+  { id: "circuits",      label: "Bare Circuitry (Verilog)", href: "with-circuits/index.html",
+    blurb: "No processor, no clock: 8 input wires, 10 LEDs, 92 logic gates. A 4-bit adder and two gate clouds test divisibility directly on the schematic." },
+  { id: "cycles",        label: "No Modulo, No If",  href: "with-cycles/index.html",
+    blurb: "Two free-running cycles of period 3 and 5 are pulled once per tick; (fizz + buzz) || n does the rest — no modulo, no division, no if." },
+  { id: "racket-2d",     label: "Racket 2D Table",   href: "with-racket-2d/index.html",
+    blurb: "Racket's 2d language reads a decision table drawn in Unicode box characters and #2dmatch dispatches on it directly." },
+  { id: "lambda",        label: "Lambda Calculus",   href: "with-lambda-calculus/demo/index.html",
+    blurb: "Nothing but single-argument arrow functions: Church numerals, the Z combinator, and one ~11KB inlined expression." },
+  { id: "rockstar",      label: "Rockstar Lyrics",   href: "with-rockstar/index.html",
+    blurb: "FizzBuzz as heavy-metal lyrics in Dylan Beattie's Rockstar language, run by its real .NET-CLR-on-WASM interpreter." },
+  { id: "hm-typescript", label: "TypeScript Types",  href: "honorable-mentions/index.html",
+    blurb: "FizzBuzz computed entirely in TypeScript's type system — no runtime code, the type checker is the interpreter." },
+  { id: "hm-tensorflow", label: "Neural Net (TensorFlow)", href: "honorable-mentions/index.html",
+    blurb: "FizzBuzz learned by a neural net trained on binary-encoded numbers instead of programmed with rules." },
+  { id: "hm-enterprise", label: "Enterprise Edition",href: "honorable-mentions/index.html",
+    blurb: "The cursed FizzBuzzEnterpriseEdition: abstract factories, strategy patterns, and dependency injection for printing three words." },
 ];
 
 const STORAGE_KEY = "fizzybuzzy-tier-list";
@@ -178,7 +251,17 @@ function makeTile(item) {
   el.className = "tile";
   el.draggable = true;
   el.dataset.id = item.id;
-  el.innerHTML = `<a href="${item.href}" target="_blank" rel="noopener">${item.label}</a>`;
+  el.innerHTML = `
+    <span class="label">${item.label}</span>
+    <span class="tooltip">${item.blurb}</span>
+    <a class="open-link" href="${item.href}" target="_blank" rel="noopener" draggable="false" title="Open ${item.label} in a new tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+        <polyline points="15 3 21 3 21 9"/>
+        <line x1="10" y1="14" x2="21" y2="3"/>
+      </svg>
+    </a>`;
+  el.querySelector(".open-link").addEventListener("mousedown", e => e.stopPropagation());
   el.addEventListener("dragstart", e => {
     el.classList.add("dragging");
     e.dataTransfer.setData("text/plain", item.id);
