@@ -50,6 +50,12 @@ Fun and unusual FizzBuzz implementations, collected for the talk
   the LEDs spell the full answer. Written in Verilog, synthesized by yosys,
   drawn by netlistsvg; the demo page re-evaluates the real netlist on every
   input and paints the live signal values onto the schematic.
+- [`with-cycles/`](with-cycles/) — FizzBuzz with no modulo, no division, and no
+  `if`: two free-running cycles of period 3 and 5 (`["", "", "fizz"]` and
+  `["", "", "", "", "buzz"]`) are pulled once per tick, and
+  `(fizz + buzz) || n` does the rest — the words collide into "fizzbuzz" every
+  15 on their own. The whole program is a 3-line `cycle` generator and a
+  one-line `yield`; the demo animates both cycles ticking in lockstep.
 - [`with-lambda-calculus/`](with-lambda-calculus/) — FizzBuzz from
   single-argument arrow functions and nothing else, a JS translation of Tom
   Stuart's [Programming with

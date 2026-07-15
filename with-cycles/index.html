@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>FizzBuzz Without Modulo</title>
+        <style>
+         :root {
+             color-scheme: light dark;
+             --fizz: light-dark(#1a6fd4, #5ba3f5);
+             --buzz: light-dark(#d4661a, #f5a35b);
+         }
+         body {
+             font-family: system-ui, sans-serif;
+             max-width: 60rem;
+             margin: 2rem auto;
+             padding: 0 1rem;
+         }
+         h1 { margin-bottom: 0.25rem; }
+         .subtitle { opacity: 0.7; margin-top: 0; }
+         .controls { margin: 1rem 0; display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; }
+         button, select { font-size: 1rem; padding: 0.35rem 0.9rem; }
+
+         .cycles {
+             display: grid;
+             grid-template-columns: auto 1fr;
+             gap: 0.75rem 1rem;
+             align-items: center;
+             margin: 1.5rem 0;
+         }
+         .cycles .label { font-weight: 600; }
+         .cycles .label.fizz { color: var(--fizz); }
+         .cycles .label.buzz { color: var(--buzz); }
+         .strip { display: flex; gap: 0.4rem; }
+         .slot {
+             min-width: 3.2rem;
+             padding: 0.45rem 0.5rem;
+             text-align: center;
+             border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+             border-radius: 8px;
+             font-family: ui-monospace, monospace;
+             opacity: 0.55;
+             transition: opacity 0.15s, background 0.15s;
+         }
+         .slot.fizz { color: var(--fizz); }
+         .slot.buzz { color: var(--buzz); }
+         .slot.active {
+             opacity: 1;
+             background: color-mix(in srgb, currentColor 12%, transparent);
+             border-color: currentColor;
+         }
+         .slot .blank { opacity: 0.4; }
+
+         .now {
+             font-size: 1.3rem;
+             margin: 1rem 0 0.5rem;
+             min-height: 1.6em;
+             font-family: ui-monospace, monospace;
+         }
+         .now .fizz { color: var(--fizz); font-weight: 600; }
+         .now .buzz { color: var(--buzz); font-weight: 600; }
+
+         .stream {
+             border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+             border-radius: 8px;
+             padding: 0.75rem 1rem;
+             min-height: 5.5rem;
+             font-family: ui-monospace, monospace;
+             font-size: 1.05rem;
+             line-height: 1.9;
+         }
+         .stream span { margin-right: 0.7rem; }
+         .stream .fizz { color: var(--fizz); font-weight: 600; }
+         .stream .buzz { color: var(--buzz); font-weight: 600; }
+         .stream .fizzbuzz {
+             font-weight: 600;
+             background: linear-gradient(90deg, var(--fizz), var(--buzz));
+             -webkit-background-clip: text;
+             background-clip: text;
+             color: transparent;
+         }
+
+         .code-section { margin-top: 2rem; }
+         .code-section h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+         pre {
+             margin: 0;
+             padding: 0.75rem 1rem;
+             border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+             border-radius: 8px;
+             overflow-x: auto;
+             font-size: 0.9rem;
+             line-height: 1.5;
+         }
+         details { margin-top: 1.5rem; }
+         details pre { margin-top: 0.5rem; }
+        </style>
+    </head>
+    <body>
+        <h1>FizzBuzz Without Modulo</h1>
+        <p class="subtitle">
+            No division, no remainder &mdash; just two free-running cycles, one of
+            period 3 and one of period 5. Each tick pulls the next slot from both;
+            concatenate whatever comes out, and if that's the empty string, the
+            number speaks for itself. The two words collide every 15 all on their
+            own. No <code>if</code> statements either.
+        </p>
+
+        <div class="controls">
+            <button id="play">Play</button>
+            <button id="reset">Reset</button>
+            <label>Speed
+                <select id="speed">
+                    <option value="0.5">0.5&times;</option>
+                    <option value="1" selected>1&times;</option>
+                    <option value="2">2&times;</option>
+                </select>
+            </label>
+        </div>
+
+        <div class="cycles">
+            <span class="label fizz">cycle 3</span>
+            <div class="strip" id="fizzStrip"></div>
+            <span class="label buzz">cycle 5</span>
+            <div class="strip" id="buzzStrip"></div>
+        </div>
+
+        <div class="now" id="now"></div>
+        <div class="stream" id="stream"></div>
+
+        <section class="code-section">
+            <h3>The whole program (this is what's running)</h3>
+            <pre><code id="js-code"></code></pre>
+        </section>
+
+        <details>
+            <summary>Bonus variant: Tail recursive, with the branching spelled out</summary>
+            <pre><code>function* fizzbuzz(n = 1,
+                   till3 = cycle([1, 1, 0]),
+                   till5 = cycle([1, 1, 1, 1, 0])) {
+    if (!till3.next().value)
+        if (!till5.next().value) yield "FizzBuzz";
+        else yield "Fizz";
+    else if (!till5.next().value) yield "Buzz";
+    else yield `${n}`;
+    yield* fizzbuzz(n + 1, till3, till5);
+}</code></pre>
+        </details>
+
+        <script>
+         function* cycle(items) {
+             while (true) yield* items;
+         }
+
+         function* fizzbuzz(n, fizzer = cycle(["", "", "fizz"]), buzzer = cycle(["", "", "", "", "buzz"])) {
+             for (let i = 1; i < n; i++)
+                 yield (fizzer.next().value + buzzer.next().value) || i;
+         }
+
+         document.getElementById("js-code").textContent =
+             [cycle, "", fizzbuzz, "", "[...fizzbuzz(101)]"].join("\n")
+                 .replaceAll("\n" + " ".repeat(9), "\n"); // strip this file's indentation
+        </script>
+        <script type="module">
+         const N = 30;
+         const TICK_MS = 700;
+
+         const playBtn = document.getElementById("play");
+         const speedSel = document.getElementById("speed");
+         const nowEl = document.getElementById("now");
+         const streamEl = document.getElementById("stream");
+
+         // build the two strips
+         function buildStrip(el, slots, cls) {
+             return slots.map(word => {
+                 const s = document.createElement("span");
+                 s.className = `slot ${cls}`;
+                 s.innerHTML = word || `<span class="blank">&mdash;</span>`;
+                 el.appendChild(s);
+                 return s;
+             });
+         }
+         const fizzSlots = buildStrip(document.getElementById("fizzStrip"),
+                                      ["", "", "fizz"], "fizz");
+         const buzzSlots = buildStrip(document.getElementById("buzzStrip"),
+                                      ["", "", "", "", "buzz"], "buzz");
+
+         // the demo's own pointers around each cycle — advance and wrap,
+         // never divide
+         let fizzIdx, buzzIdx, n, gen, playing = false, timer = null;
+
+         const advance = (idx, slots) => idx + 1 === slots.length ? 0 : idx + 1;
+
+         function markup(value) {
+             const v = String(value);
+             if (v === "fizzbuzz") return `<span class="fizzbuzz">fizzbuzz</span>`;
+             if (v === "fizz" || v === "buzz") return `<span class="${v}">${v}</span>`;
+             return `<span>${v}</span>`;
+         }
+
+         function tick() {
+             const { value, done } = gen.next();
+             if (done) { stop(); return; }
+             fizzIdx = advance(fizzIdx, fizzSlots);
+             buzzIdx = advance(buzzIdx, buzzSlots);
+             fizzSlots.forEach((s, i) => s.classList.toggle("active", i === fizzIdx));
+             buzzSlots.forEach((s, i) => s.classList.toggle("active", i === buzzIdx));
+
+             const fizzWord = fizzSlots[fizzIdx].textContent.trim() === "fizz" ? "fizz" : "";
+             const buzzWord = buzzSlots[buzzIdx].textContent.trim() === "buzz" ? "buzz" : "";
+             nowEl.innerHTML =
+                 `n = ${n} &nbsp; ("<span class="fizz">${fizzWord}</span>" + ` +
+                 `"<span class="buzz">${buzzWord}</span>") || ${n} &nbsp;&rarr;&nbsp; ${markup(value)}`;
+             streamEl.innerHTML += markup(value) + " ";
+             n++;
+             if (playing) timer = setTimeout(tick, TICK_MS / parseFloat(speedSel.value));
+         }
+
+         function stop() {
+             playing = false;
+             clearTimeout(timer);
+             playBtn.textContent = "Play";
+         }
+
+         function reset() {
+             stop();
+             fizzIdx = -1;
+             buzzIdx = -1;
+             n = 1;
+             gen = fizzbuzz(N + 1);
+             nowEl.innerHTML = "";
+             streamEl.innerHTML = "";
+             fizzSlots.forEach(s => s.classList.remove("active"));
+             buzzSlots.forEach(s => s.classList.remove("active"));
+         }
+
+         playBtn.addEventListener("click", () => {
+             if (playing) { stop(); return; }
+             if (n > N) reset();
+             playing = true;
+             playBtn.textContent = "Pause";
+             tick();
+         });
+         document.getElementById("reset").addEventListener("click", reset);
+         reset();
+        </script>
+    </body>
+</html>
