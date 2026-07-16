@@ -75,21 +75,22 @@ uv run pytest           # shapes 0–1000 through HarfBuzz and checks the math
 ```sh
 # from this directory (with-fonts/)
 uv run python -m http.server
-# open http://localhost:8000/demo/cheat.html and /demo/real.html
+# open http://localhost:8000/demo/ligatures.html and /demo/opentype.html
 ```
 
-One live-editable page per font ([`demo/cheat.html`](demo/cheat.html),
-[`demo/real.html`](demo/real.html)), each with a checkbox that sets
+One live-editable page per font ([`demo/ligatures.html`](demo/ligatures.html),
+[`demo/opentype.html`](demo/opentype.html)), each with a checkbox that sets
 `font-feature-settings: "calt" 0` to reveal the plain digits underneath
 and a "Count to 100" button for the talk.
 
-[`demo/how-it-works.html`](demo/how-it-works.html) animates the real
-font's computation: it steps a JavaScript re-implementation of the three
-lookups over the glyph buffer, showing each rule as it fires — the digit
-tiles pick up their `.s0`/`.s1`/`.s2` state colors (with the backtrack
-glyph highlighted, since reading already-substituted state is the whole
-trick), the last digit turns into the word glyph, and the leftovers blank
-out — alongside a live DFA diagram.
+[`demo/opentype.html`](demo/opentype.html) also has a "How it works" section
+below the live editor that animates the real font's computation: it steps a
+JavaScript re-implementation of the three lookups over the glyph buffer,
+showing each rule as it fires — the digit tiles pick up their
+`.s0`/`.s1`/`.s2` state colors (with the backtrack glyph highlighted, since
+reading already-substituted state is the whole trick), the last digit turns
+into the word glyph, and the leftovers blank out — alongside a live DFA
+diagram.
 The `.ttf` files also install fine in Font Book for a TextEdit/Keynote demo.
 
 ## Debugging tricks

@@ -2,8 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>How the FizzBuzz font computes</title>
+<title>FizzBuzz as a Font — the real thing</title>
 <style>
+  @font-face {
+    font-family: "FizzBuzz";
+    src: url("../dist/FizzBuzz.woff2") format("woff2"),
+         url("../dist/FizzBuzz.ttf");
+  }
   :root {
     color-scheme: light dark;
     --s0: #2e7d32; --s1: #1565c0; --s2: #c62828;
@@ -21,13 +26,34 @@
     padding: 0 1rem;
   }
   h1 { margin-bottom: 0.25rem; }
+  h2 { margin-top: 0.25rem; }
   .subtitle { opacity: 0.7; margin-top: 0; }
-  .controls, .input-row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin: 1rem 0; }
+  .editor {
+    border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+    border-radius: 8px;
+    padding: 1rem;
+    min-height: 14rem;
+    font-size: 2rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    font-family: "FizzBuzz";
+  }
+  body.raw .editor { font-feature-settings: "calt" 0; }
+  .controls { margin: 1rem 0 1.5rem; display: flex; gap: 1.5rem; align-items: center; }
+  button { font-size: 1rem; padding: 0.35rem 0.9rem; }
+  label { user-select: none; }
+
+  .how-it-works {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .input-row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin: 1rem 0; }
   input[type="text"] {
     font-size: 1.3rem; padding: 0.3rem 0.6rem; width: 14rem;
     border: 1px solid var(--border); border-radius: 6px; background: transparent; color: inherit;
   }
-  button { font-size: 1rem; padding: 0.35rem 0.9rem; }
 
   .passes { display: flex; gap: 0.5rem; margin: 1rem 0 0.5rem; }
   .pass-chip {
@@ -86,92 +112,134 @@
   .dfa .edge.hot { stroke: var(--hl); stroke-width: 3; }
   .dfa .elabel { font-size: 11px; opacity: 0.8; }
   .dfa figcaption { font-size: 0.85rem; opacity: 0.75; text-align: center; margin-top: 0.25rem; }
-  nav { margin-top: 2rem; display: flex; gap: 1.5rem; }
+
+  .attribution { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.85rem; opacity: 0.75; }
 </style>
 </head>
 <body>
-  <h1>How the FizzBuzz font computes</h1>
+  <h1>FizzBuzz as a Font — the real thing</h1>
   <p class="subtitle">
-    Three GSUB lookups run in order over the glyph buffer. The trick making it a
-    state machine: within a lookup, the <em>backtrack</em> context matches glyphs
-    that have <strong>already been substituted</strong> — so state written at one
-    position is readable at the next.
-  </p>
-
-  <div class="input-row">
-    <label for="num">Text to shape:</label>
-    <input type="text" id="num" value="315">
-    <button id="load">Load</button>
-  </div>
-
-  <div class="passes">
-    <span class="pass-chip" data-pass="STATE">1 STATE</span>
-    <span class="pass-chip" data-pass="CLASSIFY">2 CLASSIFY</span>
-    <span class="pass-chip" data-pass="BLANK">3 BLANK</span>
-  </div>
-
-  <div class="buffer" id="buffer"></div>
-  <p class="legend">
-    <span><span class="sw" style="background:var(--s0)"></span>digit sum ≡ 0 (mod 3)</span>
-    <span><span class="sw" style="background:var(--s1)"></span>≡ 1</span>
-    <span><span class="sw" style="background:var(--s2)"></span>≡ 2</span>
-    <span><span class="sw" style="background:var(--word)"></span>word glyph</span>
-    <span><span class="sw" style="background:var(--hl)"></span>backtrack (already substituted!)</span>
+    A mod-3 state machine running in the font's GSUB tables during text
+    layout. Works for any number up to 12 digits — try 999999999990.
   </p>
 
   <div class="controls">
-    <button id="reset">⏮ Reset</button>
-    <button id="step">Step ⏭</button>
-    <button id="play">▶ Play</button>
-    <span id="counter" style="opacity:0.7"></span>
+    <label>
+      <input type="checkbox" id="toggle">
+      Disable the font's logic (<code>calt</code> off) — show what's really there
+    </label>
+    <button id="count">Count to 100</button>
   </div>
 
-  <div class="explain">
-    <div class="rulebox" id="rulebox"></div>
-    <figure class="dfa" id="dfa">
-      <svg viewBox="0 0 240 220">
-        <defs>
-          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/>
-          </marker>
-        </defs>
-        <!-- nodes: s0 top, s1 bottom-left, s2 bottom-right -->
-        <circle class="node" id="n0" cx="120" cy="45"  r="26"/>
-        <circle class="node" id="n1" cx="55"  cy="160" r="26"/>
-        <circle class="node" id="n2" cx="185" cy="160" r="26"/>
-        <text x="120" y="50"  text-anchor="middle" font-size="15">s0</text>
-        <text x="55"  y="165" text-anchor="middle" font-size="15">s1</text>
-        <text x="185" y="165" text-anchor="middle" font-size="15">s2</text>
-        <!-- self loops (+0 digits: 0 3 6 9) -->
-        <path class="edge" id="e00" d="M104,23 A16,16 0 1,1 136,23"/>
-        <path class="edge" id="e11" d="M30,175 A16,16 0 1,0 38,142"/>
-        <path class="edge" id="e22" d="M202,142 A16,16 0 1,0 210,175"/>
-        <!-- +1 digits (1 4 7): s0->s1->s2->s0 -->
-        <path class="edge" id="e01" d="M97,60 Q60,90 52,133"/>
-        <path class="edge" id="e12" d="M82,167 Q120,180 158,167"/>
-        <path class="edge" id="e20" d="M188,133 Q180,90 143,60"/>
-        <!-- +2 digits (2 5 8): s0->s2->s1->s0 -->
-        <path class="edge" id="e02" d="M143,57 Q185,85 190,133"/>
-        <path class="edge" id="e21" d="M158,155 Q120,140 82,155"/>
-        <path class="edge" id="e10" d="M50,133 Q55,85 98,57"/>
-        <text class="elabel" x="120" y="10"  text-anchor="middle">+0</text>
-        <text class="elabel" x="8"   y="150">+0</text>
-        <text class="elabel" x="215" y="150">+0</text>
-        <text class="elabel" x="60"  y="100">+1</text>
-        <text class="elabel" x="120" y="192" text-anchor="middle">+1</text>
-        <text class="elabel" x="172" y="100">+1</text>
-        <text class="elabel" x="182" y="80">+2</text>
-        <text class="elabel" x="120" y="136" text-anchor="middle">+2</text>
-        <text class="elabel" x="47"  y="80">+2</text>
-      </svg>
-      <figcaption>running digit-sum mod 3; edges labeled by digit mod 3</figcaption>
-    </figure>
-  </div>
+  <div class="editor" contenteditable="true" spellcheck="false"></div>
 
-  <nav>
-    <a href="cheat.html">&larr; the cheat</a>
-    <a href="real.html">the real font &rarr;</a>
-  </nav>
+  <p>It's live text — type your own numbers above.</p>
+
+  <section class="how-it-works">
+    <h2>How it works</h2>
+    <p class="subtitle">
+      Three GSUB lookups run in order over the glyph buffer. The trick making it a
+      state machine: within a lookup, the <em>backtrack</em> context matches glyphs
+      that have <strong>already been substituted</strong> — so state written at one
+      position is readable at the next.
+    </p>
+
+    <div class="input-row">
+      <label for="num">Text to shape:</label>
+      <input type="text" id="num" value="315">
+      <button id="load">Load</button>
+    </div>
+
+    <div class="passes">
+      <span class="pass-chip" data-pass="STATE">1 STATE</span>
+      <span class="pass-chip" data-pass="CLASSIFY">2 CLASSIFY</span>
+      <span class="pass-chip" data-pass="BLANK">3 BLANK</span>
+    </div>
+
+    <div class="buffer" id="buffer"></div>
+    <p class="legend">
+      <span><span class="sw" style="background:var(--s0)"></span>digit sum ≡ 0 (mod 3)</span>
+      <span><span class="sw" style="background:var(--s1)"></span>≡ 1</span>
+      <span><span class="sw" style="background:var(--s2)"></span>≡ 2</span>
+      <span><span class="sw" style="background:var(--word)"></span>word glyph</span>
+      <span><span class="sw" style="background:var(--hl)"></span>backtrack (already substituted!)</span>
+    </p>
+
+    <div class="controls">
+      <button id="reset">⏮ Reset</button>
+      <button id="step">Step ⏭</button>
+      <button id="play">▶ Play</button>
+      <span id="counter" style="opacity:0.7"></span>
+    </div>
+
+    <div class="explain">
+      <div class="rulebox" id="rulebox"></div>
+      <figure class="dfa" id="dfa">
+        <svg viewBox="0 0 240 220">
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/>
+            </marker>
+          </defs>
+          <!-- nodes: s0 top, s1 bottom-left, s2 bottom-right -->
+          <circle class="node" id="n0" cx="120" cy="45"  r="26"/>
+          <circle class="node" id="n1" cx="55"  cy="160" r="26"/>
+          <circle class="node" id="n2" cx="185" cy="160" r="26"/>
+          <text x="120" y="50"  text-anchor="middle" font-size="15">s0</text>
+          <text x="55"  y="165" text-anchor="middle" font-size="15">s1</text>
+          <text x="185" y="165" text-anchor="middle" font-size="15">s2</text>
+          <!-- self loops (+0 digits: 0 3 6 9) -->
+          <path class="edge" id="e00" d="M104,23 A16,16 0 1,1 136,23"/>
+          <path class="edge" id="e11" d="M30,175 A16,16 0 1,0 38,142"/>
+          <path class="edge" id="e22" d="M202,142 A16,16 0 1,0 210,175"/>
+          <!-- +1 digits (1 4 7): s0->s1->s2->s0 -->
+          <path class="edge" id="e01" d="M97,60 Q60,90 52,133"/>
+          <path class="edge" id="e12" d="M82,167 Q120,180 158,167"/>
+          <path class="edge" id="e20" d="M188,133 Q180,90 143,60"/>
+          <!-- +2 digits (2 5 8): s0->s2->s1->s0 -->
+          <path class="edge" id="e02" d="M143,57 Q185,85 190,133"/>
+          <path class="edge" id="e21" d="M158,155 Q120,140 82,155"/>
+          <path class="edge" id="e10" d="M50,133 Q55,85 98,57"/>
+          <text class="elabel" x="120" y="10"  text-anchor="middle">+0</text>
+          <text class="elabel" x="8"   y="150">+0</text>
+          <text class="elabel" x="215" y="150">+0</text>
+          <text class="elabel" x="60"  y="100">+1</text>
+          <text class="elabel" x="120" y="192" text-anchor="middle">+1</text>
+          <text class="elabel" x="172" y="100">+1</text>
+          <text class="elabel" x="182" y="80">+2</text>
+          <text class="elabel" x="120" y="136" text-anchor="middle">+2</text>
+          <text class="elabel" x="47"  y="80">+2</text>
+        </svg>
+        <figcaption>running digit-sum mod 3; edges labeled by digit mod 3</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <p class="attribution">
+    Basic idea from Litherum's
+    <a href="https://litherum.blogspot.com/2019/03/addition-font.html">"addition font"</a>
+    post.
+  </p>
+
+<script>
+  const editor = document.querySelector(".editor");
+  editor.textContent = Array.from({length: 20}, (_, i) => i + 1).join(" ");
+
+  document.getElementById("toggle").addEventListener("change", e =>
+    document.body.classList.toggle("raw", e.target.checked));
+
+  let countTimer = null;
+  document.getElementById("count").addEventListener("click", () => {
+    clearInterval(countTimer);
+    let n = 0;
+    editor.textContent = "";
+    countTimer = setInterval(() => {
+      n += 1;
+      if (n > 100) { clearInterval(countTimer); return; }
+      editor.textContent += (n > 1 ? " " : "") + n;
+    }, 80);
+  });
+</script>
 
 <script>
   const DIGIT_NAMES = ["zero","one","two","three","four","five","six","seven","eight","nine"];
