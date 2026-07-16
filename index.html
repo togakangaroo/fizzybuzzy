@@ -276,19 +276,41 @@ function makeTile(item) {
   return el;
 }
 
+function getDragAfterElement(zone, x, y) {
+  const tiles = [...zone.querySelectorAll(".tile:not(.dragging)")];
+  let closest = { distance: -Infinity, element: null };
+  for (const tile of tiles) {
+    const box = tile.getBoundingClientRect();
+    const centerX = box.left + box.width / 2;
+    const centerY = box.top + box.height / 2;
+    // Distance along reading order (row by row, left to right).
+    const sameRow = y >= box.top && y <= box.bottom;
+    const offset = sameRow ? x - centerX : (y < centerY ? -Infinity : Infinity);
+    if (offset < 0 && offset > closest.distance) {
+      closest = { distance: offset, element: tile };
+    }
+  }
+  return closest.element;
+}
+
 const allZones = [poolEl, ...document.querySelectorAll(".dropzone")];
 allZones.forEach(zone => {
   zone.addEventListener("dragover", e => {
     e.preventDefault();
     zone.classList.add("dragover");
+    const dragging = document.querySelector(".tile.dragging");
+    if (!dragging) return;
+    const after = getDragAfterElement(zone, e.clientX, e.clientY);
+    if (after == null) {
+      zone.appendChild(dragging);
+    } else if (after !== dragging) {
+      zone.insertBefore(dragging, after);
+    }
   });
   zone.addEventListener("dragleave", () => zone.classList.remove("dragover"));
   zone.addEventListener("drop", e => {
     e.preventDefault();
     zone.classList.remove("dragover");
-    const id = e.dataTransfer.getData("text/plain");
-    const tile = document.querySelector(`.tile[data-id="${id}"]`);
-    if (tile) zone.appendChild(tile);
     save();
   });
 });
