@@ -32,6 +32,31 @@
   .controls { margin: 1rem 0 1.5rem; display: flex; gap: 1.5rem; align-items: center; }
   button { font-size: 1rem; padding: 0.35rem 0.9rem; }
   label { user-select: none; }
+
+  .intro {
+    border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin: 1.5rem 0 2rem;
+  }
+  .intro h2 { margin-top: 0; font-size: 1.1rem; }
+  .liga-demo {
+    display: flex;
+    gap: 2.5rem;
+    flex-wrap: wrap;
+    align-items: baseline;
+    margin: 1rem 0;
+    font-family: "Hoefler Text", "Iowan Old Style", "Times New Roman", serif;
+    font-size: 2.5rem;
+  }
+  .liga-demo .off { font-variant-ligatures: none; font-feature-settings: "liga" 0; }
+  .liga-demo figure { margin: 0; text-align: center; }
+  .liga-demo figcaption {
+    font-family: system-ui, sans-serif;
+    font-size: 0.8rem;
+    opacity: 0.7;
+    margin-top: 0.35rem;
+  }
 </style>
 </head>
 <body>
@@ -47,12 +72,35 @@
       Disable the font's logic (<code>calt</code> off) — show what's really there
     </label>
     <button id="count">Count to 100</button>
-    <a href="opentype.html">the real thing &rarr;</a>
   </div>
 
   <div class="editor" contenteditable="true" spellcheck="false"></div>
 
   <p>It's live text — type your own numbers above.</p>
+
+  <div class="intro">
+    <h2>Wait, what's a ligature?</h2>
+    <p>
+      A ligature is a font swapping two or more letters for one purpose-drawn
+      glyph when it sees them next to each other — usually to fix an ugly
+      collision, like the dot of an "i" crashing into the hook of an "f".
+      Most serif fonts do this silently, all the time. Look at "office" below,
+      set in the same font with ligatures on and off:
+    </p>
+    <div class="liga-demo">
+      <figure><span>office</span><figcaption>ligatures on — "ffi" is one glyph</figcaption></figure>
+      <figure><span class="off">office</span><figcaption>ligatures off — three separate letters</figcaption></figure>
+    </div>
+    <p>
+      That substitution — "when you see this exact letter sequence, draw this
+      other glyph instead" — is a rule in the font file itself
+      (an OpenType <code>GSUB</code> lookup), not something your word
+      processor is doing. This cheat font just points that same mechanism at
+      numbers instead of letters: "when you see the exact digits <code>1</code>
+      <code>5</code>, draw the glyph for the word FizzBuzz instead." 47 of
+      those rules, one per qualifying number, is the entire "program."
+    </p>
+  </div>
 
 <script>
   const editor = document.querySelector(".editor");
