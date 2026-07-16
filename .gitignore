@@ -1,6 +1,8 @@
-# build artifacts (fonts are rebuilt with uv run {cheat,real}/build.py)
+# build artifacts (fonts are rebuilt with uv run {cheat,real}/build.py;
+# lambda-calculus dist is rebuilt with node inline.js)
 dist/
 !with-fonts/dist/
+!with-lambda-calculus/dist/
 
 # python
 __pycache__/
