@@ -26,6 +26,24 @@
          button, select { font-size: 1rem; padding: 0.35rem 0.9rem; }
          #stepno { font-variant-numeric: tabular-nums; opacity: 0.7; }
 
+         #srcpanel { display: flex; flex-direction: column; gap: 0.5rem; }
+         #srcbox {
+             font-family: ui-monospace, monospace;
+             font-size: 0.85rem;
+             line-height: 1.5;
+             width: 100%;
+             min-height: 11rem;
+             resize: vertical;
+             box-sizing: border-box;
+             border: 1px solid var(--dim);
+             border-radius: 8px;
+             padding: 0.6rem 0.75rem;
+             background: var(--faint);
+             color: inherit;
+         }
+         #srcrow { display: flex; gap: 0.75rem; align-items: center; }
+         #srcerr { color: var(--buzz); font-size: 0.85rem; }
+
          #rulebox {
              border: 1px solid var(--dim);
              border-left: 4px solid var(--fizz);
@@ -115,6 +133,15 @@
             then evaluate. All of it runs in your browser, in ClojureScript,
             via <a href="https://github.com/babashka/scittle">Scittle</a>.
         </p>
+
+        <div id="srcpanel">
+            <textarea id="srcbox" spellcheck="false"></textarea>
+            <div id="srcrow">
+                <button id="rebuild">⟳ Rebuild</button>
+                <span class="subtitle" style="margin: 0; font-size: 0.85rem;">edit the C above, then Rebuild (or ⌘/Ctrl-Enter) to re-run the whole pipeline</span>
+                <span id="srcerr"></span>
+            </div>
+        </div>
 
         <div class="controls">
             <button id="play">▶ Run</button>
@@ -399,7 +426,9 @@
 
 ;; ------------------------------------------------------------ compute frames
 
-(def result
+(defn compute-result
+  "Run the whole rewrite pipeline over some C source, from scratch."
+  [csrc]
   (try
     (let [s1 ((:apply (first char-rules)) csrc)
           s2 ((:apply (second char-rules)) s1)
@@ -441,68 +470,95 @@
     (set! (.-textContent d) (str x))
     (.appendChild (el "out") d)))
 
-(if-let [err (:error result)]
-  (set! (.-innerHTML (el "rulebox")) (str "<b>error:</b> " (escape err)))
-  (let [frames (:frames result)
-        final  (:final result)
+(def pipeline (concat char-rules [read-rule] rules [eval-rule]))
+(def state (atom {:frames [] :final nil}))
+(def idx (atom 0))
+(def timer (atom nil))
+
+(defn pause! []
+  (when-let [t @timer] (js/clearInterval t) (reset! timer nil))
+  (set! (.-textContent (el "play")) "▶ Run"))
+
+(defn run-program! []
+  (set! (.-innerHTML (el "out")) "")
+  (js/scittle.core.eval_string
+    (pr-str (apply list (cons 'do (:final @state))))))
+
+(defn show! []
+  (let [frames (:frames @state)
         nframes (count frames)
-        idx (atom 0)
-        timer (atom nil)
-        pipeline (concat char-rules [read-rule] rules [eval-rule])
-        run-program!
-        (fn []
-          (set! (.-innerHTML (el "out")) "")
-          (js/scittle.core.eval_string
-            (pr-str (apply list (cons 'do final)))))
-        pause!
-        (fn []
-          (when-let [t @timer] (js/clearInterval t) (reset! timer nil))
-          (set! (.-textContent (el "play")) "▶ Run"))
-        show!
-        (fn []
-          (let [{:keys [kind html rule]} (nth frames @idx)]
-            (set! (.-innerHTML (el "tree")) html)
-            (set! (.-innerHTML (el "rulebox"))
-                  (if rule
-                    (str "<b>" (:name rule) "</b> &mdash; " (:desc rule))
-                    "The starting program: FizzBuzz, in C. No Clojure in sight."))
-            (set! (.-textContent (el "stepno"))
-                  (str (inc @idx) " / " nframes))
-            (.forEach (js/document.querySelectorAll "#rules li")
-                      (fn [li]
-                        (.toggle (.-classList li) "active"
-                                 (= (.-id li) (str "rule-" (name (or (:id rule) :none)))))))
-            (when (= kind :eval) (run-program!))))
-        step! (fn [] (when (< @idx (dec nframes)) (swap! idx inc) (show!)))
-        play!
-        (fn []
-          (pause!)
-          (when (= @idx (dec nframes))
-            (reset! idx 0) (set! (.-innerHTML (el "out")) "") (show!))
-          (reset! timer
-                  (js/setInterval
-                    (fn [] (if (< @idx (dec nframes)) (step!) (pause!)))
-                    (js/parseInt (.-value (el "speed")))))
-          (set! (.-textContent (el "play")) "⏸ Pause"))]
+        {:keys [kind html rule]} (nth frames @idx)]
+    (set! (.-innerHTML (el "tree")) html)
+    (set! (.-innerHTML (el "rulebox"))
+          (if rule
+            (str "<b>" (:name rule) "</b> &mdash; " (:desc rule))
+            "The starting program: FizzBuzz, in C. No Clojure in sight."))
+    (set! (.-textContent (el "stepno"))
+          (str (inc @idx) " / " nframes))
+    (.forEach (js/document.querySelectorAll "#rules li")
+              (fn [li]
+                (.toggle (.-classList li) "active"
+                         (= (.-id li) (str "rule-" (name (or (:id rule) :none)))))))
+    (when (= kind :eval) (run-program!))))
 
-    ;; expose print! so the eval'd normal form can call it
-    (set! (.-innerHTML (el "rules"))
-          (apply str
-            (map (fn [r]
-                   (str "<li id='rule-" (name (:id r)) "'><b>" (:name r)
-                        "</b><br><span>" (:desc r) "</span></li>"))
-                 pipeline)))
+(defn step! []
+  (when (< @idx (dec (count (:frames @state)))) (swap! idx inc) (show!)))
 
-    (.addEventListener (el "play") "click"
-                       (fn [] (if @timer (pause!) (play!))))
-    (.addEventListener (el "step") "click"
-                       (fn [] (pause!) (step!)))
-    (.addEventListener (el "reset") "click"
-                       (fn []
-                         (pause!) (reset! idx 0)
-                         (set! (.-innerHTML (el "out")) "")
-                         (show!)))
-    (show!)))
+(defn play! []
+  (pause!)
+  (let [nframes (count (:frames @state))]
+    (when (= @idx (dec nframes))
+      (reset! idx 0) (set! (.-innerHTML (el "out")) "") (show!))
+    (reset! timer
+            (js/setInterval
+              (fn [] (if (< @idx (dec nframes)) (step!) (pause!)))
+              (js/parseInt (.-value (el "speed"))))))
+  (set! (.-textContent (el "play")) "⏸ Pause"))
+
+(defn load-result!
+  "Recompute the whole pipeline from the textarea's current source and
+  reset the stepper to the beginning."
+  [csrc]
+  (pause!)
+  (reset! idx 0)
+  (set! (.-innerHTML (el "out")) "")
+  (let [r (compute-result csrc)]
+    (reset! state r)
+    (if-let [err (:error r)]
+      (do (set! (.-textContent (el "srcerr")) err)
+          (set! (.-innerHTML (el "rulebox"))
+                "Fix the source above and hit Rebuild &mdash; the reader or rewriter choked on it."))
+      (do (set! (.-textContent (el "srcerr")) "")
+          (show!)))))
+
+;; expose print! so the eval'd normal form can call it, and seed the rules panel
+(set! (.-innerHTML (el "rules"))
+      (apply str
+        (map (fn [r]
+               (str "<li id='rule-" (name (:id r)) "'><b>" (:name r)
+                    "</b><br><span>" (:desc r) "</span></li>"))
+             pipeline)))
+
+(set! (.-value (el "srcbox")) csrc)
+
+(.addEventListener (el "play") "click"
+                   (fn [] (if @timer (pause!) (play!))))
+(.addEventListener (el "step") "click"
+                   (fn [] (pause!) (step!)))
+(.addEventListener (el "reset") "click"
+                   (fn []
+                     (pause!) (reset! idx 0)
+                     (set! (.-innerHTML (el "out")) "")
+                     (show!)))
+(.addEventListener (el "rebuild") "click"
+                   (fn [] (load-result! (.-value (el "srcbox")))))
+(.addEventListener (el "srcbox") "keydown"
+                   (fn [e]
+                     (when (and (.-key e) (= (.-key e) "Enter") (or (.-metaKey e) (.-ctrlKey e)))
+                       (.preventDefault e)
+                       (load-result! (.-value (el "srcbox"))))))
+
+(load-result! csrc)
         </script>
     </body>
 </html>
