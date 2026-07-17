@@ -24,7 +24,8 @@ const fizzbuzz = (s) =>
     const g = rest.at(-1); // named-groups object is the replacer's last arg
     return g.fizzbuzz !== undefined ? "FizzBuzz"
          : g.buzz     !== undefined ? "Buzz"
-         : "Fizz";
+         : g.fizz     !== undefined ? "Fizz"
+         : s;
   });
 
 const parts = { FIZZBUZZ_SRC, BUZZ_SRC, FIZZ_SRC, SRC };

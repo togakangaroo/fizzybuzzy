@@ -364,6 +364,12 @@
              outEl.innerHTML = "";
              animateNumber(1).then(() => { /* leave 1 on display, not in grid */ });
          });
+         document.getElementById("tryme").addEventListener("input", () => {
+             if (!playing) return;
+             playing = false;
+             clearTimeout(timer);
+             playBtn.textContent = "Play";
+         });
          document.getElementById("tryme").addEventListener("keydown", (e) => {
              if (e.key !== "Enter") return;
              const v = e.target.value.trim();
