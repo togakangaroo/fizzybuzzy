@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>FizzBuzz in Base 15</title>
+        <style>
+         :root {
+             color-scheme: light dark;
+             --fizz: light-dark(#1a6fd4, #5ba3f5);
+             --buzz: light-dark(#d4661a, #f5a35b);
+             --both: light-dark(#8a2ad4, #c58bf5);
+         }
+         body {
+             font-family: system-ui, sans-serif;
+             max-width: 60rem;
+             margin: 2rem auto;
+             padding: 0 1rem;
+         }
+         h1 { margin-bottom: 0.25rem; }
+         .subtitle { opacity: 0.7; margin-top: 0; }
+         .controls { margin: 1rem 0; display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; }
+         button, select { font-size: 1rem; padding: 0.35rem 0.9rem; }
+
+         .table-wrap { overflow-x: auto; margin: 1.5rem 0; }
+         .digit-table { display: flex; gap: 0.35rem; }
+         .digit {
+             min-width: 3rem;
+             padding: 0.4rem 0.3rem 0.5rem;
+             text-align: center;
+             border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+             border-radius: 8px;
+             font-family: ui-monospace, monospace;
+             opacity: 0.55;
+             transition: opacity 0.15s, background 0.15s;
+         }
+         .digit .d { font-size: 1.25rem; font-weight: 600; display: block; }
+         .digit .w { font-size: 0.7rem; display: block; margin-top: 0.2rem; }
+         .digit .w:empty::before { content: "\2014"; opacity: 0.4; }
+         .digit.fizz { color: var(--fizz); }
+         .digit.buzz { color: var(--buzz); }
+         .digit.fizzbuzz { color: var(--both); }
+         .digit.active {
+             opacity: 1;
+             background: color-mix(in srgb, currentColor 12%, transparent);
+             border-color: currentColor;
+         }
+
+         .odometer {
+             display: flex;
+             align-items: baseline;
+             gap: 1rem;
+             margin: 1.5rem 0 0.5rem;
+             font-family: ui-monospace, monospace;
+             font-size: 1.2rem;
+             flex-wrap: wrap;
+         }
+         .odometer .dec { opacity: 0.7; min-width: 8ch; }
+         .b15 { display: flex; gap: 0.25rem; }
+         .b15 span {
+             padding: 0.25rem 0.5rem;
+             border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+             border-radius: 6px;
+             font-size: 1.4rem;
+             font-weight: 600;
+         }
+         .b15 span.last {
+             border-color: currentColor;
+             background: color-mix(in srgb, currentColor 12%, transparent);
+         }
+         .b15 span.last.fizz { color: var(--fizz); }
+         .b15 span.last.buzz { color: var(--buzz); }
+         .b15 span.last.fizzbuzz { color: var(--both); }
+
+         .now {
+             font-size: 1.3rem;
+             margin: 0.5rem 0;
+             min-height: 1.6em;
+             font-family: ui-monospace, monospace;
+         }
+         .now .fizz, .stream .fizz { color: var(--fizz); font-weight: 600; }
+         .now .buzz, .stream .buzz { color: var(--buzz); font-weight: 600; }
+         .now .fizzbuzz, .stream .fizzbuzz {
+             font-weight: 600;
+             background: linear-gradient(90deg, var(--fizz), var(--buzz));
+             -webkit-background-clip: text;
+             background-clip: text;
+             color: transparent;
+         }
+
+         .stream {
+             border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+             border-radius: 8px;
+             padding: 0.75rem 1rem;
+             min-height: 5.5rem;
+             font-family: ui-monospace, monospace;
+             font-size: 1.05rem;
+             line-height: 1.9;
+         }
+         .stream span { margin-right: 0.7rem; }
+
+         .code-section { margin-top: 2rem; }
+         .code-section h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+         pre {
+             margin: 0;
+             padding: 0.75rem 1rem;
+             border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+             border-radius: 8px;
+             overflow-x: auto;
+             font-size: 0.9rem;
+             line-height: 1.5;
+         }
+        </style>
+    </head>
+    <body>
+        <h1>FizzBuzz in Base 15</h1>
+        <p class="subtitle">
+            In base 10 you can spot multiples of 2 and 5 from the last digit
+            alone, because 2 and 5 divide the base. Pick a better base: 3, 5,
+            and 15 all divide 15, so in base 15 the <em>entire</em> FizzBuzz
+            decision lives in the final digit. Divisible by 15 means it ends
+            in 0; by 3 means it ends in 0, 3, 6, 9, or C; by 5 means it ends
+            in 0, 5, or A. The branch collapses into a fifteen-entry lookup
+            table &mdash; the modulo is hiding in the base conversion.
+        </p>
+
+        <div class="controls">
+            <button id="play">Play</button>
+            <button id="reset">Reset</button>
+            <label>Speed
+                <select id="speed">
+                    <option value="0.5">0.5&times;</option>
+                    <option value="1" selected>1&times;</option>
+                    <option value="2">2&times;</option>
+                </select>
+            </label>
+        </div>
+
+        <div class="table-wrap">
+            <div class="digit-table" id="digitTable"></div>
+        </div>
+
+        <div class="odometer">
+            <span class="dec" id="dec"></span>
+            <div class="b15" id="b15"></div>
+        </div>
+        <div class="now" id="now"></div>
+        <div class="stream" id="stream"></div>
+
+        <section class="code-section">
+            <h3>The whole program (this is what's running)</h3>
+            <pre><code id="js-code"></code></pre>
+        </section>
+
+        <script>
+         const WORDS = { 0: "fizzbuzz", 3: "fizz", 6: "fizz", 9: "fizz", c: "fizz",
+                         5: "buzz",     a: "buzz" };
+
+         function* fizzbuzz(n) {
+             for (let i = 1; i <= n; i++)
+                 yield WORDS[i.toString(15).at(-1)] ?? i;
+         }
+
+         document.getElementById("js-code").textContent =
+             ["const WORDS = { 0: \"fizzbuzz\", 3: \"fizz\", 6: \"fizz\", 9: \"fizz\", c: \"fizz\",",
+              "                5: \"buzz\",     a: \"buzz\" };",
+              "",
+              String(fizzbuzz).replaceAll("\n" + " ".repeat(9), "\n"),
+              "",
+              "[...fizzbuzz(100)]"].join("\n");
+        </script>
+        <script type="module">
+         const N = 100;
+         const TICK_MS = 700;
+
+         const playBtn = document.getElementById("play");
+         const speedSel = document.getElementById("speed");
+         const decEl = document.getElementById("dec");
+         const b15El = document.getElementById("b15");
+         const nowEl = document.getElementById("now");
+         const streamEl = document.getElementById("stream");
+
+         const clsFor = w => w === "fizzbuzz" ? "fizzbuzz" : (w || "");
+
+         // the fifteen-entry lookup table, one tile per base-15 digit
+         const DIGITS = "0123456789abcde".split("");
+         const tableEl = document.getElementById("digitTable");
+         const digitTiles = DIGITS.map(d => {
+             const word = WORDS[d] ?? "";
+             const el = document.createElement("span");
+             el.className = `digit ${clsFor(word)}`;
+             el.innerHTML = `<span class="d">${d.toUpperCase()}</span><span class="w">${word}</span>`;
+             tableEl.appendChild(el);
+             return el;
+         });
+
+         function markup(value) {
+             const v = String(value);
+             if (v === "fizz" || v === "buzz" || v === "fizzbuzz")
+                 return `<span class="${v}">${v}</span>`;
+             return `<span>${v}</span>`;
+         }
+
+         let n, gen, playing = false, timer = null;
+
+         function tick() {
+             const { value, done } = gen.next();
+             if (done) { stop(); return; }
+
+             const b15 = n.toString(15);
+             const last = b15.at(-1);
+             const word = WORDS[last] ?? "";
+
+             decEl.textContent = `n = ${n}`;
+             b15El.innerHTML = b15.split("").map((d, i) =>
+                 i === b15.length - 1
+                     ? `<span class="last ${clsFor(word)}">${d.toUpperCase()}</span>`
+                     : `<span>${d.toUpperCase()}</span>`
+             ).join("");
+
+             digitTiles.forEach((el, i) =>
+                 el.classList.toggle("active", DIGITS[i] === last));
+
+             nowEl.innerHTML =
+                 `${n} in base 15 is ${b15.toUpperCase()}, ends in ` +
+                 `${last.toUpperCase()} &nbsp;&rarr;&nbsp; ${markup(value)}`;
+             streamEl.innerHTML += markup(value) + " ";
+             n++;
+             if (playing) timer = setTimeout(tick, TICK_MS / parseFloat(speedSel.value));
+         }
+
+         function stop() {
+             playing = false;
+             clearTimeout(timer);
+             playBtn.textContent = "Play";
+         }
+
+         function reset() {
+             stop();
+             n = 1;
+             gen = fizzbuzz(N);
+             decEl.textContent = "";
+             b15El.innerHTML = "";
+             nowEl.innerHTML = "";
+             streamEl.innerHTML = "";
+             digitTiles.forEach(el => el.classList.remove("active"));
+         }
+
+         playBtn.addEventListener("click", () => {
+             if (playing) { stop(); return; }
+             if (n > N) reset();
+             playing = true;
+             playBtn.textContent = "Pause";
+             tick();
+         });
+         document.getElementById("reset").addEventListener("click", reset);
+         reset();
+        </script>
+    </body>
+</html>

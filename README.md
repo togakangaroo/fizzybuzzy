@@ -8,6 +8,12 @@ Fun and unusual FizzBuzz implementations, collected for the talk
 - [`with-fonts/`](with-fonts/) — FizzBuzz as an OpenType font: the "program" is
   a `.ttf` and the "runtime" is your text renderer. GSUB substitution tables run
   a mod-3 state machine during text layout.
+- [`with-base-15/`](with-base-15/) — FizzBuzz by choosing a better base: just
+  as multiples of 2 and 5 are visible in the last digit of base 10, in base 15
+  divisibility by 3, 5, and 15 all live in the final digit — ends in 0 is
+  fizzbuzz, {3, 6, 9, C} is fizz, {5, A} is buzz. The whole branch collapses
+  into a fifteen-entry lookup table; the modulo hides in the base conversion.
+  The demo animates the base-15 odometer and the table lookup.
 - [`with-waves/`](with-waves/) — FizzBuzz from zero crossings of two sine waves:
   sin(πn/3) and sin(πn/5) are zero exactly on multiples of 3 and 5. An animated
   page draws the curves and fills in a truth table as they cross each tick.
