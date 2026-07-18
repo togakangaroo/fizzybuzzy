@@ -110,6 +110,11 @@
   .tile.dragging { opacity: 0.35; }
   .tile:hover { transform: translateY(-2px); box-shadow: 0 3px 8px rgba(0,0,0,0.15); }
   .tile .label { flex: 1; }
+  .tile.blurred .label,
+  .tile.blurred .tooltip {
+    filter: blur(3px);
+    transition: filter 0.15s ease;
+  }
   .tile .open-link {
     position: absolute;
     right: 0.3rem;
@@ -236,6 +241,7 @@ const ITEMS = [
 ];
 
 const STORAGE_KEY = "fizzybuzzy-tier-list";
+const BLUR_MODE = new URLSearchParams(location.search).has("blur");
 
 const tiersEl = document.getElementById("tiers");
 const poolEl = document.getElementById("pool");
@@ -264,6 +270,7 @@ function makeTile(item) {
       </svg>
     </a>`;
   el.querySelector(".open-link").addEventListener("mousedown", e => e.stopPropagation());
+  el.addEventListener("click", () => el.classList.remove("blurred"), { once: true });
   el.addEventListener("dragstart", e => {
     el.classList.add("dragging");
     e.dataTransfer.setData("text/plain", item.id);
@@ -311,9 +318,21 @@ allZones.forEach(zone => {
   zone.addEventListener("drop", e => {
     e.preventDefault();
     zone.classList.remove("dragover");
+    if (zone !== poolEl) {
+      const dragging = document.querySelector(".tile.dragging");
+      if (dragging) dragging.classList.remove("blurred");
+    }
     save();
   });
 });
+
+function applyBlur() {
+  if (!BLUR_MODE) return;
+  [...poolEl.children].forEach(tile => tile.classList.add("blurred"));
+  document.querySelectorAll(".dropzone").forEach(zone => {
+    [...zone.children].forEach(tile => tile.classList.remove("blurred"));
+  });
+}
 
 function save() {
   const state = {};
@@ -356,9 +375,11 @@ document.getElementById("reset").addEventListener("click", () => {
   poolEl.innerHTML = "";
   document.querySelectorAll(".dropzone").forEach(z => z.innerHTML = "");
   load();
+  applyBlur();
 });
 
 load();
+applyBlur();
 </script>
 </body>
 </html>
