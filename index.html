@@ -187,28 +187,9 @@
     cursor: pointer;
   }
   button:hover { background: color-mix(in srgb, currentColor 8%, var(--tile-bg)); }
-
-  .qr-margin {
-    position: fixed;
-    top: 2rem;
-    right: 2rem;
-    width: 220px;
-  }
-  .qr-margin img {
-    width: 100%;
-    height: auto;
-    border-radius: 8px;
-    background: #fff;
-  }
-  @media (max-width: 100rem) {
-    .qr-margin { display: none; }
-  }
 </style>
 </head>
 <body>
-<div class="qr-margin">
-  <img src="qr-code.png" alt="QR code linking to session feedback for Ranking FizzBuzz for Fun Not Profit">
-</div>
 <h1>FizzBuzz Tier List</h1>
 <p class="subtitle">
     Drag each implementation into a tier.
